@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+
+  /* Qubic custom colors */
+  --qubic-primary: #0066FF;
+  --qubic-secondary: #00D9A5;
+  --qubic-dark: #0A0E1A;
+  --qubic-card: #1A1F2E;
+  --qubic-border: #2A3142;
+  --qubic-text: #E5E7EB;
+  --qubic-muted: #9CA3AF;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Qubic color tokens */
+  --color-qubic-primary: var(--qubic-primary);
+  --color-qubic-secondary: var(--qubic-secondary);
+  --color-qubic-dark: var(--qubic-dark);
+  --color-qubic-card: var(--qubic-card);
+  --color-qubic-border: var(--qubic-border);
+  --color-qubic-text: var(--qubic-text);
+  --color-qubic-muted: var(--qubic-muted);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--qubic-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--qubic-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--qubic-muted);
+}
+
+/* Animation utilities */
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes stream-cursor {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-stream-cursor {
+  animation: stream-cursor 1s ease-in-out infinite;
+}
