@@ -5,30 +5,9 @@ import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { BinaryWatermark, CircuitPattern, HexGrid } from "@/app/ui/Backgrounds";
 import { JobDetail } from "@/app/features/opus/components/JobDetail";
-import { ContentSkeleton } from "@/app/features/opus/components/Layout";
+import { SuspenseContent } from "@/app/features/opus/shared";
 import Link from "next/link";
-import { Zap, ArrowLeft } from "lucide-react";
-
-function DelayedContent({
-  children,
-  delay = 100,
-}: {
-  children: React.ReactNode;
-  delay?: number;
-}) {
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setShow(true), delay);
-    return () => clearTimeout(timer);
-  }, [delay]);
-
-  if (!show) {
-    return <ContentSkeleton />;
-  }
-
-  return <>{children}</>;
-}
+import { Zap } from "lucide-react";
 
 export default function JobDetailPage() {
   const params = useParams();
@@ -36,8 +15,8 @@ export default function JobDetailPage() {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoaded(true), 100);
-    return () => clearTimeout(timer);
+    // Trigger loaded state immediately on mount for CSS animations
+    setIsLoaded(true);
   }, []);
 
   return (
@@ -78,9 +57,9 @@ export default function JobDetailPage() {
           animate={{ opacity: isLoaded ? 1 : 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
         >
-          <DelayedContent>
+          <SuspenseContent data-testid="job-detail-content">
             <JobDetail jobId={jobId} />
-          </DelayedContent>
+          </SuspenseContent>
         </motion.div>
       </main>
     </div>

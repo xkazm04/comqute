@@ -1,13 +1,13 @@
 export { OpusLayout, GlassCard, ContentWrapper, ContentSkeleton, tabs, type TabId } from "./Layout";
-export { RequesterDashboard } from "./RequesterDashboard";
-export { WorkerDashboard } from "./WorkerDashboard";
-export { WorkerOnboarding } from "./WorkerOnboarding";
+export { RequesterDashboard } from "../../developer/RequesterDashboard";
+export { WorkerDashboard } from "../../worker/WorkerDashboard";
+export { WorkerOnboarding } from "../../worker/WorkerOnboarding";
 export { JobDetail } from "./JobDetail";
-export { NetworkExplorer } from "./NetworkExplorer";
+export { NetworkExplorer } from "../../explorer/NetworkExplorer";
 export { FlowDiagram, RequesterFlowDiagram, WorkerFlowDiagram } from "./FlowDiagram";
-export { PoolMarketplace } from "./PoolMarketplace";
+export { PoolMarketplace } from "../../marketplace/PoolMarketplace";
 
 // Reputation and Review System
-export { WorkerProfile, StarRating, ReputationBadge } from "./WorkerProfile";
+export { WorkerProfile, StarRating, ReputationBadge } from "../../worker/WorkerProfile";
 export { WriteReview } from "./WriteReview";
-export { WorkerListCard, WorkerList, FavoriteWorkers } from "./WorkerListCard";
+export { WorkerListCard, WorkerList, FavoriteWorkers } from "../../worker/WorkerListCard";

@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import { motion, useInView } from "framer-motion";
 import { DollarSign, Shield, Zap } from "lucide-react";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 
 // ============================================================================
 // ANIMATED COUNTER
@@ -50,16 +51,17 @@ function AnimatedCounter({
 
 function PricingCard() {
   const [isHovered, setIsHovered] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
 
   return (
     <motion.div
       className="relative group"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      initial={{ opacity: 0, y: 40 }}
+      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ duration: 0.6, delay: 0.1 }}
+      transition={{ duration: prefersReducedMotion ? 0.01 : 0.6, delay: prefersReducedMotion ? 0 : 0.1 }}
     >
       {/* Glow effect */}
       <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-emerald-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -78,23 +80,31 @@ function PricingCard() {
           </svg>
         </div>
 
-        {/* Floating coins animation */}
+        {/* Floating coins animation - static for reduced motion */}
         <div className="absolute top-4 right-4 opacity-20">
           {[...Array(3)].map((_, i) => (
-            <motion.div
-              key={i}
-              className="absolute w-3 h-3 rounded-full bg-emerald-400"
-              animate={{
-                y: [0, -20, 0],
-                opacity: [0.5, 1, 0.5],
-              }}
-              transition={{
-                duration: 2,
-                delay: i * 0.3,
-                repeat: Infinity,
-              }}
-              style={{ left: i * 12, top: i * 8 }}
-            />
+            prefersReducedMotion ? (
+              <div
+                key={i}
+                className="absolute w-3 h-3 rounded-full bg-emerald-400"
+                style={{ left: i * 12, top: i * 8 }}
+              />
+            ) : (
+              <motion.div
+                key={i}
+                className="absolute w-3 h-3 rounded-full bg-emerald-400"
+                animate={{
+                  y: [0, -20, 0],
+                  opacity: [0.5, 1, 0.5],
+                }}
+                transition={{
+                  duration: 2,
+                  delay: i * 0.3,
+                  repeat: Infinity,
+                }}
+                style={{ left: i * 12, top: i * 8 }}
+              />
+            )
           ))}
         </div>
 
@@ -102,18 +112,20 @@ function PricingCard() {
         <div className="relative mb-4">
           <motion.div
             className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 flex items-center justify-center border border-emerald-500/30"
-            animate={isHovered ? { scale: 1.1, rotate: 5 } : { scale: 1, rotate: 0 }}
+            animate={prefersReducedMotion ? {} : isHovered ? { scale: 1.1, rotate: 5 } : { scale: 1, rotate: 0 }}
             transition={{ type: "spring", stiffness: 300 }}
           >
             <DollarSign className="w-7 h-7 text-emerald-400" />
           </motion.div>
 
-          {/* Pulse ring */}
-          <motion.div
-            className="absolute inset-0 rounded-xl border-2 border-emerald-400"
-            animate={{ scale: [1, 1.4, 1.4], opacity: [0.5, 0, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          />
+          {/* Pulse ring - hidden for reduced motion */}
+          {!prefersReducedMotion && (
+            <motion.div
+              className="absolute inset-0 rounded-xl border-2 border-emerald-400"
+              animate={{ scale: [1, 1.4, 1.4], opacity: [0.5, 0, 0] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
+          )}
         </div>
 
         {/* Title */}
@@ -169,51 +181,66 @@ function PricingCard() {
 
 function PrivacyCard() {
   const [isHovered, setIsHovered] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
 
   return (
     <motion.div
       className="relative group"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      initial={{ opacity: 0, y: 40 }}
+      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ duration: 0.6, delay: 0.2 }}
+      transition={{ duration: prefersReducedMotion ? 0.01 : 0.6, delay: prefersReducedMotion ? 0 : 0.2 }}
     >
       {/* Glow effect */}
       <div className="absolute -inset-1 bg-gradient-to-r from-violet-500/20 via-fuchsia-500/20 to-violet-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
       {/* Card */}
       <div className="relative h-full p-6 rounded-2xl border border-violet-500/20 bg-zinc-900/80 backdrop-blur-sm overflow-hidden">
-        {/* Encrypted data stream background */}
+        {/* Encrypted data stream background - static for reduced motion */}
         <div className="absolute inset-0 overflow-hidden opacity-10">
-          <motion.div
-            className="font-mono text-[8px] text-violet-400 whitespace-pre leading-tight"
-            animate={{ y: [0, -100] }}
-            transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-          >
-            {Array(20).fill("█▓▒░ ENCRYPTED ░▒▓█ ").join("\n")}
-          </motion.div>
+          {prefersReducedMotion ? (
+            <div className="font-mono text-[8px] text-violet-400 whitespace-pre leading-tight">
+              {Array(20).fill("█▓▒░ ENCRYPTED ░▒▓█ ").join("\n")}
+            </div>
+          ) : (
+            <motion.div
+              className="font-mono text-[8px] text-violet-400 whitespace-pre leading-tight"
+              animate={{ y: [0, -100] }}
+              transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+            >
+              {Array(20).fill("█▓▒░ ENCRYPTED ░▒▓█ ").join("\n")}
+            </motion.div>
+          )}
         </div>
 
-        {/* Shield animation */}
+        {/* Shield animation - static for reduced motion */}
         <div className="absolute top-4 right-4">
-          <motion.div
-            className="w-16 h-16 opacity-10"
-            animate={{ rotate: 360 }}
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          >
-            <svg viewBox="0 0 64 64" className="w-full h-full">
-              <circle cx="32" cy="32" r="30" fill="none" stroke="rgba(139, 92, 246, 0.5)" strokeWidth="1" strokeDasharray="4 4" />
-            </svg>
-          </motion.div>
+          {prefersReducedMotion ? (
+            <div className="w-16 h-16 opacity-10">
+              <svg viewBox="0 0 64 64" className="w-full h-full">
+                <circle cx="32" cy="32" r="30" fill="none" stroke="rgba(139, 92, 246, 0.5)" strokeWidth="1" strokeDasharray="4 4" />
+              </svg>
+            </div>
+          ) : (
+            <motion.div
+              className="w-16 h-16 opacity-10"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            >
+              <svg viewBox="0 0 64 64" className="w-full h-full">
+                <circle cx="32" cy="32" r="30" fill="none" stroke="rgba(139, 92, 246, 0.5)" strokeWidth="1" strokeDasharray="4 4" />
+              </svg>
+            </motion.div>
+          )}
         </div>
 
         {/* Icon */}
         <div className="relative mb-4">
           <motion.div
             className="w-14 h-14 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center border border-violet-500/30"
-            animate={isHovered ? { scale: 1.1 } : { scale: 1 }}
+            animate={prefersReducedMotion ? {} : isHovered ? { scale: 1.1 } : { scale: 1 }}
             transition={{ type: "spring", stiffness: 300 }}
           >
             <Shield className="w-7 h-7 text-violet-400" />
@@ -221,7 +248,7 @@ function PrivacyCard() {
             {/* Lock indicator */}
             <motion.div
               className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center"
-              animate={isHovered ? { scale: [1, 1.2, 1] } : {}}
+              animate={prefersReducedMotion ? {} : isHovered ? { scale: [1, 1.2, 1] } : {}}
               transition={{ duration: 0.3 }}
             >
               <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -287,6 +314,7 @@ function PrivacyCard() {
 function SpeedCard() {
   const [isHovered, setIsHovered] = useState(false);
   const [latency, setLatency] = useState(2.4);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -300,31 +328,39 @@ function SpeedCard() {
       className="relative group"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      initial={{ opacity: 0, y: 40 }}
+      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ duration: 0.6, delay: 0.3 }}
+      transition={{ duration: prefersReducedMotion ? 0.01 : 0.6, delay: prefersReducedMotion ? 0 : 0.3 }}
     >
       {/* Glow effect */}
       <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
       {/* Card */}
       <div className="relative h-full p-6 rounded-2xl border border-amber-500/20 bg-zinc-900/80 backdrop-blur-sm overflow-hidden">
-        {/* Speed lines background */}
+        {/* Speed lines background - static for reduced motion */}
         <div className="absolute inset-0 overflow-hidden">
           {[...Array(5)].map((_, i) => (
-            <motion.div
-              key={i}
-              className="absolute h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent"
-              style={{ top: `${20 + i * 15}%`, width: "100%" }}
-              animate={{ x: ["-100%", "200%"] }}
-              transition={{
-                duration: 1.5,
-                delay: i * 0.2,
-                repeat: Infinity,
-                ease: "linear",
-              }}
-            />
+            prefersReducedMotion ? (
+              <div
+                key={i}
+                className="absolute h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent"
+                style={{ top: `${20 + i * 15}%`, width: "100%", left: "50%" }}
+              />
+            ) : (
+              <motion.div
+                key={i}
+                className="absolute h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent"
+                style={{ top: `${20 + i * 15}%`, width: "100%" }}
+                animate={{ x: ["-100%", "200%"] }}
+                transition={{
+                  duration: 1.5,
+                  delay: i * 0.2,
+                  repeat: Infinity,
+                  ease: "linear",
+                }}
+              />
+            )
           ))}
         </div>
 
@@ -332,21 +368,23 @@ function SpeedCard() {
         <div className="relative mb-4">
           <motion.div
             className="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center border border-amber-500/30"
-            animate={isHovered ? { scale: 1.1, rotate: -5 } : { scale: 1, rotate: 0 }}
+            animate={prefersReducedMotion ? {} : isHovered ? { scale: 1.1, rotate: -5 } : { scale: 1, rotate: 0 }}
             transition={{ type: "spring", stiffness: 300 }}
           >
             <Zap className="w-7 h-7 text-amber-400" />
           </motion.div>
 
-          {/* Energy pulse */}
-          <motion.div
-            className="absolute inset-0 rounded-xl"
-            style={{
-              background: "radial-gradient(circle, rgba(251, 191, 36, 0.3) 0%, transparent 70%)",
-            }}
-            animate={{ scale: [1, 1.5], opacity: [0.5, 0] }}
-            transition={{ duration: 1, repeat: Infinity }}
-          />
+          {/* Energy pulse - hidden for reduced motion */}
+          {!prefersReducedMotion && (
+            <motion.div
+              className="absolute inset-0 rounded-xl"
+              style={{
+                background: "radial-gradient(circle, rgba(251, 191, 36, 0.3) 0%, transparent 70%)",
+              }}
+              animate={{ scale: [1, 1.5], opacity: [0.5, 0] }}
+              transition={{ duration: 1, repeat: Infinity }}
+            />
+          )}
         </div>
 
         {/* Title */}

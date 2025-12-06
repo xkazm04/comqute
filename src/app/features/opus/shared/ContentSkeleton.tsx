@@ -1,5 +1,7 @@
 "use client";
 
+import { Suspense, type ReactNode } from "react";
+
 export interface ContentSkeletonProps {
   className?: string;
   "data-testid"?: string;
@@ -19,5 +21,42 @@ export function ContentSkeleton({
         <div className="h-24 bg-zinc-800/30 rounded-xl" />
       </div>
     </div>
+  );
+}
+
+/**
+ * SuspenseContent wraps content in a Suspense boundary with CSS skeleton-to-content
+ * transition. The skeleton fades out naturally when content renders, without
+ * artificial setTimeout delays.
+ */
+export interface SuspenseContentProps {
+  children: ReactNode;
+  fallback?: ReactNode;
+  "data-testid"?: string;
+}
+
+export function SuspenseContent({
+  children,
+  fallback,
+  "data-testid": testId,
+}: SuspenseContentProps) {
+  return (
+    <Suspense
+      fallback={
+        <div
+          className="animate-fade-in-fast"
+          data-testid={testId ? `${testId}-skeleton` : undefined}
+        >
+          {fallback ?? <ContentSkeleton />}
+        </div>
+      }
+    >
+      <div
+        className="animate-fade-in"
+        data-testid={testId}
+      >
+        {children}
+      </div>
+    </Suspense>
   );
 }

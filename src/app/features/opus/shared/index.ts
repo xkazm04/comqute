@@ -20,11 +20,19 @@ export type { GlassCardProps } from "./GlassCard";
 export { EmptyStateIllustration } from "./EmptyStateIllustration";
 export type { EmptyStateIllustrationProps, EmptyStateVariant } from "./EmptyStateIllustration";
 
-export { ContentSkeleton } from "./ContentSkeleton";
-export type { ContentSkeletonProps } from "./ContentSkeleton";
+export { ContentSkeleton, SuspenseContent } from "./ContentSkeleton";
+export type { ContentSkeletonProps, SuspenseContentProps } from "./ContentSkeleton";
 
-export { StatusBadge } from "./StatusBadge";
-export type { StatusBadgeProps } from "./StatusBadge";
+// JobStatusIndicator - unified status component with badge and dot variants
+export {
+  JobStatusIndicator,
+  StatusBadge, // Backward-compatible alias
+  JOB_STATUS_CONFIG,
+  ANIMATING_STATUSES,
+  isAnimatingStatus,
+  isErrorStatus,
+} from "./JobStatusIndicator";
+export type { JobStatusIndicatorProps, StatusBadgeProps } from "./JobStatusIndicator";
 
 export { StatItem } from "./StatItem";
 export type { StatItemProps } from "./StatItem";
@@ -116,3 +124,11 @@ export {
   isResourceError,
   isModelError,
 } from "../lib/ollama-errors";
+
+// Onboarding Persistence (re-exported from lib for convenience)
+export {
+  useOnboardingPersistence,
+  type OnboardingPersistedState,
+  type OnboardingPersistenceReturn,
+  type PersistedStepStatus,
+} from "../lib/useOnboardingPersistence";

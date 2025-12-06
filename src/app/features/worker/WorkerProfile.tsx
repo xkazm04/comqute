@@ -15,7 +15,7 @@ import {
   Heart,
   MessageSquare,
 } from "lucide-react";
-import { GlassCard } from "../shared";
+import { GlassCard } from "../opus/shared";
 import { useReviewStore } from "@/stores";
 import { formatQubic, formatDuration, formatRelativeTime } from "@/lib/mock-utils";
 import type { Worker, WorkerReview } from "@/types";

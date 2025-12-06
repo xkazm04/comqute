@@ -103,12 +103,30 @@ body {
   }
 }
 
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
 .animate-stream-cursor {
   animation: stream-cursor 1s ease-in-out infinite;
+}
+
+/* Fade-in animation for content transitions (replaces artificial setTimeout delays) */
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out forwards;
+}
+
+.animate-fade-in-fast {
+  animation: fade-in 0.15s ease-out forwards;
 }
 
 /* ============================================================================
@@ -228,4 +246,32 @@ body {
 
 .font-weight-bold {
   font-weight: 700;
+}
+
+/* ============================================================================
+   REDUCED MOTION SUPPORT
+   Respects user's system preferences for reduced motion (WCAG 2.1 AAA)
+   Users with vestibular disorders or motion sensitivity will see static states
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-pulse-glow,
+  .animate-stream-cursor,
+  .animate-spin,
+  .animate-pulse,
+  .animate-bounce,
+  .animate-fade-in,
+  .animate-fade-in-fast {
+    animation: none !important;
+    opacity: 1 !important;
+  }
 }

@@ -6,3 +6,6 @@
 
 // Job Pipeline - Unified job lifecycle state machine
 export * from "./job-pipeline";
+
+// AI Pipeline - Composable multi-model workflows
+export * from "./pipeline";

@@ -23,21 +23,24 @@ import {
   BookOpen,
   Save,
   Play,
+  GitBranch,
 } from "lucide-react";
-import { GlassCard, StatusBadge, ModelSelector, EmptyStateIllustration } from "../shared";
-import { RequesterFlowDiagram } from "./FlowDiagram";
-import { WriteReview } from "./WriteReview";
-import { StarRating } from "./WorkerProfile";
-import { TemplateLibrary, SaveTemplateModal, UseTemplateModal } from "./templates";
+import { GlassCard, StatusBadge, ModelSelector, EmptyStateIllustration } from "../opus/shared";
+import { RequesterFlowDiagram } from "../opus/components/FlowDiagram";
+import { WriteReview } from "../opus/components/WriteReview";
+import { StarRating } from "../worker/WorkerProfile";
+import { TemplateLibrary, SaveTemplateModal, UseTemplateModal } from "../opus/components/templates";
+import { PipelineBuilder } from "../opus/components/pipeline";
 import { useWalletStore, useReviewStore, useWorkerStore } from "@/stores";
 import { useJobs, useTemplates } from "@/hooks";
 import { getDefaultModel, getModelById } from "@/lib/models";
 import { formatQubic, formatRelativeTime, formatDuration } from "@/lib/mock-utils";
 import { formatCost } from "@/lib/pricing";
-import { useRequesterPipeline } from "../lib/job-pipeline";
-import type { RequesterJobView } from "../lib/job-pipeline";
+import { useRequesterPipeline } from "../opus/lib/job-pipeline";
+import type { RequesterJobView } from "../opus/lib/job-pipeline";
 import type { Job, Worker } from "@/types";
 import type { JobTemplate, CreateTemplateRequest } from "@/types/template";
+import type { Pipeline } from "../opus/lib/pipeline/types";
 
 // ============================================================================
 // JOB ROW (non-glass, minimal) - Uses RequesterJobView from pipeline
@@ -88,12 +91,13 @@ const quickPrompts = [
 
 function QuickPrompts({ onSelect }: { onSelect: (prompt: string) => void }) {
   return (
-    <div className="flex flex-wrap gap-2">
-      {quickPrompts.map((item) => (
+    <div className="flex flex-wrap gap-2" data-testid="quick-prompts">
+      {quickPrompts.map((item, index) => (
         <button
           key={item.text}
           onClick={() => onSelect(item.text)}
           className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs text-zinc-400 bg-zinc-900/50 border border-zinc-800 hover:border-cyan-500/30 hover:text-cyan-400 transition-all"
+          data-testid={`quick-prompt-btn-${index}`}
         >
           <span>{item.icon}</span>
           <span>{item.text}</span>
@@ -618,6 +622,9 @@ export function RequesterDashboard() {
   const [showUseTemplateModal, setShowUseTemplateModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<JobTemplate | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<JobTemplate | null>(null);
+
+  // Pipeline state
+  const [savedPipelines, setSavedPipelines] = useState<Pipeline[]>([]);
 
   const { wallet } = useWalletStore();
   const { worker } = useWorkerStore();

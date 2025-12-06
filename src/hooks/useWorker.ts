@@ -7,19 +7,117 @@ import { useJobPolling } from "./useJobPolling";
 import type { Job } from "@/types";
 import { calculateActualCost } from "@/lib/pricing";
 
+/**
+ * Return type for the useWorker hook.
+ */
 interface UseWorkerReturn {
+  /** The current worker instance, or null if not initialized */
   worker: ReturnType<typeof useWorkerStore.getState>["worker"];
+  /** Whether auto-claim mode is enabled */
   isAutoClaimEnabled: boolean;
+  /** List of pending jobs available to claim */
   pendingJobs: Job[];
+  /** The job currently being processed, or null */
   currentJob: Job | null;
+  /** Whether a job is currently being processed */
   isProcessing: boolean;
+  /** Initialize the worker (creates new or resumes existing) */
   initializeWorker: () => void;
+  /** Transition worker to online status */
   goOnline: () => void;
+  /** Transition worker to offline status */
   goOffline: () => void;
+  /** Toggle auto-claim mode on/off */
   toggleAutoClaim: () => void;
+  /** Claim and process a specific job */
   claimJob: (jobId: string) => Promise<void>;
 }
 
+/**
+ * Hook for managing worker lifecycle and job processing in the distributed compute network.
+ *
+ * ## Worker Status States
+ *
+ * The worker can be in one of three states, displayed in WorkerStatusToggle:
+ *
+ * - **"online"**: Worker is active and ready to claim jobs. Polling for pending jobs
+ *   is enabled, and auto-claim will trigger if enabled.
+ *
+ * - **"busy"**: Worker is actively processing a job. This status is set automatically
+ *   when `setCurrentJob(jobId)` is called with a non-null jobId. The worker cannot
+ *   claim additional jobs while busy (single-job processing model).
+ *
+ * - **"offline"**: Worker is not accepting jobs. Polling is disabled. The toggle in
+ *   WorkerStatusToggle is disabled when busy to prevent interrupting active jobs.
+ *
+ * ## Status Transition Rules
+ *
+ * ```
+ * offline ──[goOnline()]──► online ──[claimJob()]──► busy
+ *    ▲                         │                      │
+ *    │                         │                      │
+ *    └───[goOffline()]─────────┘                      │
+ *    └─────────────────── [job completes/fails] ◄─────┘
+ * ```
+ *
+ * ## Job Claiming Invariants
+ *
+ * 1. **Single Job Model**: A worker can only process ONE job at a time.
+ *    - `isProcessingRef.current` prevents concurrent `claimJob()` calls
+ *    - `worker.currentJobId` tracks the active job
+ *    - Polling for new jobs is disabled while `currentJobId` is set
+ *
+ * 2. **Claim-to-Complete Lifecycle**: When `claimJob(jobId)` is called:
+ *    - Job status: pending → assigned → running → complete/failed
+ *    - Worker status: online → busy → online (on completion)
+ *    - Server is notified at each state transition
+ *
+ * ## Edge Case Behaviors
+ *
+ * ### Worker Goes Offline Mid-Processing
+ * - The toggle is DISABLED when status is "busy", preventing accidental offline
+ * - If the app crashes/closes while processing:
+ *   - On reload, `currentJobId` is cleared (see worker-store persist config)
+ *   - Worker status resets to "offline"
+ *   - The in-progress job remains in "running" or "assigned" state server-side
+ *   - **IMPORTANT**: Escrow funds remain locked until job timeout or manual intervention
+ *   - TODO: Implement job recovery/timeout mechanism on server
+ *
+ * ### Auto-Claim Behavior
+ * - Only triggers when: isAutoClaimEnabled AND status === "online" AND no currentJobId
+ * - Claims the FIRST pending job from the queue (FIFO order)
+ * - Does NOT batch-claim multiple jobs
+ *
+ * ### Job Failure Handling
+ * - On inference error, job status is set to "failed" with error message
+ * - Worker returns to "online" status (can claim new jobs)
+ * - Escrow is NOT automatically released (requires separate refund mechanism)
+ *
+ * ### Persistence Behavior
+ * - Worker data is persisted to localStorage (`qubic-worker-storage`)
+ * - On page reload: status resets to "offline", currentJobId is cleared
+ * - Stats (earnings, jobs completed) are preserved across sessions
+ *
+ * @example
+ * ```tsx
+ * function WorkerPanel() {
+ *   const { worker, goOnline, goOffline, claimJob, isProcessing } = useWorker();
+ *
+ *   // Worker is processing - cannot go offline or claim new jobs
+ *   if (worker?.status === "busy") {
+ *     return <ProcessingIndicator />;
+ *   }
+ *
+ *   return (
+ *     <button onClick={worker?.status === "offline" ? goOnline : goOffline}>
+ *       {worker?.status === "offline" ? "Go Online" : "Go Offline"}
+ *     </button>
+ *   );
+ * }
+ * ```
+ *
+ * @returns {UseWorkerReturn} Worker state and control functions
+ */
 export function useWorker(): UseWorkerReturn {
   const {
     worker,

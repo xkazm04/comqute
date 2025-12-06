@@ -6,7 +6,9 @@
       "Bash(npm run build:*)",
       "Bash(cat:*)",
       "Bash(curl:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(npx next lint:*)",
+      "Bash(npm run lint)"
     ],
     "deny": [],
     "ask": []

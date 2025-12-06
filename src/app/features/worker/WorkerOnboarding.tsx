@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Download,
@@ -21,9 +21,12 @@ import {
   ArrowRight,
   RotateCcw,
   AlertCircle,
+  PlayCircle,
+  X,
 } from "lucide-react";
-import { GlassCard } from "./Layout";
+import { GlassCard } from "../opus/components/Layout";
 import { SUPPORTED_MODELS } from "@/lib/models";
+import { useOnboardingPersistence, type OnboardingPersistedState } from "../opus/lib/useOnboardingPersistence";
 
 // ============================================================================
 // TYPES
@@ -232,6 +235,14 @@ function InstallStep({ onComplete }: { onComplete: () => void }) {
   const [isRunning, setIsRunning] = useState(false);
   const [lines, setLines] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const runInstall = async () => {
     setIsRunning(true);
@@ -257,12 +268,18 @@ function InstallStep({ onComplete }: { onComplete: () => void }) {
 
     for (let i = 0; i < steps.length; i++) {
       await new Promise((r) => setTimeout(r, steps[i].delay));
+      if (!mountedRef.current) return;
       setLines((prev) => [...prev, steps[i].text]);
       setProgress(Math.floor(((i + 1) / steps.length) * 100));
     }
 
+    if (!mountedRef.current) return;
     setIsRunning(false);
-    setTimeout(onComplete, 500);
+    setTimeout(() => {
+      if (mountedRef.current) {
+        onComplete();
+      }
+    }, 500);
   };
 
   return (
@@ -328,6 +345,7 @@ function InstallStep({ onComplete }: { onComplete: () => void }) {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           className="w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-white font-medium flex items-center justify-center gap-2"
+          data-testid="onboarding-install-btn"
         >
           <Download className="w-4 h-4" />
           Start Installation
@@ -367,10 +385,32 @@ function InstallStep({ onComplete }: { onComplete: () => void }) {
  *
  * @param onComplete - Callback invoked when configuration is saved.
  *   Triggers transition to the next step (Download Models).
+ * @param initialWalletAddress - Pre-filled wallet address from persisted state
+ * @param initialSelectedModels - Pre-selected models from persisted state
+ * @param onConfigChange - Callback for persisting form changes
  */
-function ConfigureStep({ onComplete }: { onComplete: () => void }) {
-  const [walletAddress, setWalletAddress] = useState("");
-  const [selectedModels, setSelectedModels] = useState<string[]>([SUPPORTED_MODELS[0].id]);
+interface ConfigureStepProps {
+  onComplete: () => void;
+  initialWalletAddress?: string;
+  initialSelectedModels?: string[];
+  onConfigChange?: (walletAddress: string, selectedModels: string[]) => void;
+}
+
+function ConfigureStep({
+  onComplete,
+  initialWalletAddress = "",
+  initialSelectedModels,
+  onConfigChange
+}: ConfigureStepProps) {
+  const [walletAddress, setWalletAddress] = useState(initialWalletAddress);
+  const [selectedModels, setSelectedModels] = useState<string[]>(
+    initialSelectedModels ?? [SUPPORTED_MODELS[0].id]
+  );
+
+  // Persist config changes
+  useEffect(() => {
+    onConfigChange?.(walletAddress, selectedModels);
+  }, [walletAddress, selectedModels, onConfigChange]);
 
   const toggleModel = (modelId: string) => {
     setSelectedModels((prev) =>
@@ -407,6 +447,7 @@ function ConfigureStep({ onComplete }: { onComplete: () => void }) {
             onChange={(e) => setWalletAddress(e.target.value)}
             placeholder="QUBIC_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
             className="w-full px-4 py-3 rounded-lg bg-zinc-800 border border-zinc-700 text-white font-mono text-sm focus:outline-none focus:border-cyan-500"
+            data-testid="onboarding-wallet-input"
           />
         </div>
 
@@ -454,6 +495,7 @@ function ConfigureStep({ onComplete }: { onComplete: () => void }) {
         whileHover={{ scale: canContinue ? 1.02 : 1 }}
         whileTap={{ scale: canContinue ? 0.98 : 1 }}
         className="w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium flex items-center justify-center gap-2"
+        data-testid="onboarding-configure-save-btn"
       >
         Save Configuration
         <ArrowRight className="w-4 h-4" />
@@ -498,27 +540,63 @@ function ConfigureStep({ onComplete }: { onComplete: () => void }) {
 function DownloadModelsStep({ onComplete }: { onComplete: () => void }) {
   const [downloads, setDownloads] = useState<Record<string, { progress: number; status: string }>>({});
   const [isRunning, setIsRunning] = useState(false);
+  const mountedRef = useRef(true);
+  const completedRef = useRef(false);
 
-  const runDownload = async () => {
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const runDownload = useCallback(async () => {
+    if (completedRef.current) return; // Prevent re-running after completion
     setIsRunning(true);
 
-    for (const model of SUPPORTED_MODELS.slice(0, 2)) {
+    const modelsToDownload = SUPPORTED_MODELS.slice(0, 2);
+
+    for (const model of modelsToDownload) {
+      if (!mountedRef.current) return;
       setDownloads((prev) => ({ ...prev, [model.id]: { progress: 0, status: "Downloading..." } }));
 
-      // Fast simulation for demo - progress jumps quickly
-      for (let p = 0; p <= 100; p += 20) {
-        await new Promise((r) => setTimeout(r, 50));
+      // Very fast simulation for demo - auto-complete without pause opportunity
+      // Using requestAnimationFrame-based progress for smoother updates
+      for (let p = 0; p <= 100; p += 25) {
+        await new Promise((r) => setTimeout(r, 40)); // 40ms between updates
+        if (!mountedRef.current) return;
         setDownloads((prev) => ({ ...prev, [model.id]: { progress: p, status: "Downloading..." } }));
       }
 
+      if (!mountedRef.current) return;
       setDownloads((prev) => ({ ...prev, [model.id]: { progress: 100, status: "Verifying hash..." } }));
-      await new Promise((r) => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 100)); // Quick hash verification
+      if (!mountedRef.current) return;
       setDownloads((prev) => ({ ...prev, [model.id]: { progress: 100, status: "Complete" } }));
     }
 
+    if (!mountedRef.current) return;
     setIsRunning(false);
-    setTimeout(onComplete, 300);
-  };
+    completedRef.current = true;
+
+    // Immediately trigger completion with minimal delay
+    setTimeout(() => {
+      if (mountedRef.current) {
+        onComplete();
+      }
+    }, 150);
+  }, [onComplete]);
+
+  // Auto-start download when component mounts (no pause opportunity)
+  useEffect(() => {
+    // Small delay to allow component to render first
+    const timer = setTimeout(() => {
+      if (!completedRef.current && !isRunning) {
+        runDownload();
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [runDownload, isRunning]);
 
   const allComplete = Object.values(downloads).every((d) => d.status === "Complete");
 
@@ -575,22 +653,19 @@ function DownloadModelsStep({ onComplete }: { onComplete: () => void }) {
         })}
       </div>
 
-      {!isRunning && !allComplete && (
-        <motion.button
-          onClick={runDownload}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-white font-medium flex items-center justify-center gap-2"
-        >
-          <HardDrive className="w-4 h-4" />
-          Download Models
-        </motion.button>
-      )}
-
+      {/* Auto-download in progress - no manual button needed */}
       {isRunning && (
         <div className="flex items-center justify-center gap-2 py-3 text-zinc-400">
           <Loader2 className="w-4 h-4 animate-spin" />
-          <span className="body-default">Downloading models...</span>
+          <span className="body-default">Downloading models automatically...</span>
+        </div>
+      )}
+
+      {/* Show completion message before advancing */}
+      {allComplete && (
+        <div className="flex items-center justify-center gap-2 py-3 text-emerald-400">
+          <CheckCircle className="w-4 h-4" />
+          <span className="body-default">All models downloaded successfully!</span>
         </div>
       )}
     </div>
@@ -600,6 +675,16 @@ function DownloadModelsStep({ onComplete }: { onComplete: () => void }) {
 // ============================================================================
 // STEP 4: BENCHMARK
 // ============================================================================
+
+/**
+ * Benchmark results type
+ */
+interface BenchmarkResults {
+  tokensPerSec: number;
+  latency: number;
+  memoryUsed: number;
+  hash: string;
+}
 
 /**
  * Step 4: Hardware Benchmark
@@ -629,28 +714,46 @@ function DownloadModelsStep({ onComplete }: { onComplete: () => void }) {
  *
  * @param onComplete - Callback invoked when benchmark passes.
  *   Triggers transition to the next step (Stake).
+ * @param initialResults - Pre-existing benchmark results from persisted state
+ * @param onResultsChange - Callback for persisting benchmark results
  */
-function BenchmarkStep({ onComplete }: { onComplete: () => void }) {
+interface BenchmarkStepProps {
+  onComplete: () => void;
+  initialResults?: BenchmarkResults | null;
+  onResultsChange?: (results: BenchmarkResults) => void;
+}
+
+function BenchmarkStep({ onComplete, initialResults, onResultsChange }: BenchmarkStepProps) {
   const [isRunning, setIsRunning] = useState(false);
-  const [results, setResults] = useState<{
-    tokensPerSec: number;
-    latency: number;
-    memoryUsed: number;
-    hash: string;
-  } | null>(null);
+  const [results, setResults] = useState<BenchmarkResults | null>(initialResults ?? null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const runBenchmark = async () => {
     setIsRunning(true);
     // Fast for demo
     await new Promise((r) => setTimeout(r, 1200));
-    setResults({
+    if (!mountedRef.current) return;
+    const newResults: BenchmarkResults = {
       tokensPerSec: 94 + Math.floor(Math.random() * 20),
       latency: 0.8 + Math.random() * 0.4,
       memoryUsed: 19.2 + Math.random() * 2,
       hash: "0x7a3f" + Math.random().toString(16).slice(2, 10),
-    });
+    };
+    setResults(newResults);
+    onResultsChange?.(newResults);
     setIsRunning(false);
-    setTimeout(onComplete, 300);
+    setTimeout(() => {
+      if (mountedRef.current) {
+        onComplete();
+      }
+    }, 300);
   };
 
   return (
@@ -714,6 +817,7 @@ function BenchmarkStep({ onComplete }: { onComplete: () => void }) {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           className="w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-white font-medium flex items-center justify-center gap-2"
+          data-testid="onboarding-benchmark-btn"
         >
           <Gauge className="w-4 h-4" />
           Run Benchmark
@@ -756,18 +860,44 @@ function BenchmarkStep({ onComplete }: { onComplete: () => void }) {
  *
  * @param onComplete - Callback invoked when staking succeeds.
  *   Triggers transition to the final step (Register).
+ * @param initialStakeAmount - Pre-set stake amount from persisted state
+ * @param onStakeAmountChange - Callback for persisting stake amount changes
  */
-function StakeStep({ onComplete }: { onComplete: () => void }) {
-  const [stakeAmount, setStakeAmount] = useState(10_000_000);
+interface StakeStepProps {
+  onComplete: () => void;
+  initialStakeAmount?: number;
+  onStakeAmountChange?: (amount: number) => void;
+}
+
+function StakeStep({ onComplete, initialStakeAmount = 10_000_000, onStakeAmountChange }: StakeStepProps) {
+  const [stakeAmount, setStakeAmount] = useState(initialStakeAmount);
+
+  // Persist stake amount changes
+  useEffect(() => {
+    onStakeAmountChange?.(stakeAmount);
+  }, [stakeAmount, onStakeAmountChange]);
   const [isStaking, setIsStaking] = useState(false);
   const [isStaked, setIsStaked] = useState(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const handleStake = async () => {
     setIsStaking(true);
     await new Promise((r) => setTimeout(r, 2000));
+    if (!mountedRef.current) return;
     setIsStaked(true);
     setIsStaking(false);
-    setTimeout(onComplete, 500);
+    setTimeout(() => {
+      if (mountedRef.current) {
+        onComplete();
+      }
+    }, 500);
   };
 
   return (
@@ -797,6 +927,7 @@ function StakeStep({ onComplete }: { onComplete: () => void }) {
               onChange={(e) => setStakeAmount(Number(e.target.value))}
               className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
               disabled={isStaked}
+              data-testid="onboarding-stake-slider"
             />
             <div className="flex justify-between caption text-zinc-500 mt-2">
               <span>1M QUBIC</span>
@@ -835,6 +966,7 @@ function StakeStep({ onComplete }: { onComplete: () => void }) {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-white font-medium flex items-center justify-center gap-2"
+          data-testid="onboarding-stake-btn"
         >
           {isStaking ? (
             <>
@@ -893,14 +1025,27 @@ function RegisterStep({ onComplete }: { onComplete: () => void }) {
   const [isRegistering, setIsRegistering] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
   const [txHash, setTxHash] = useState("");
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const handleRegister = async () => {
     setIsRegistering(true);
     await new Promise((r) => setTimeout(r, 2500));
+    if (!mountedRef.current) return;
     setTxHash("0x" + Math.random().toString(16).slice(2, 18) + "...");
     setIsRegistered(true);
     setIsRegistering(false);
-    setTimeout(onComplete, 500);
+    setTimeout(() => {
+      if (mountedRef.current) {
+        onComplete();
+      }
+    }, 500);
   };
 
   return (
@@ -952,6 +1097,7 @@ function RegisterStep({ onComplete }: { onComplete: () => void }) {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white font-medium flex items-center justify-center gap-2"
+          data-testid="onboarding-register-btn"
         >
           {isRegistering ? (
             <>
@@ -1009,10 +1155,79 @@ function CompletionScreen({ onReset }: { onReset: () => void }) {
         <button
           onClick={onReset}
           className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-800 text-zinc-300 hover:text-white transition-colors"
+          data-testid="onboarding-start-over-btn"
         >
           <RotateCcw className="w-4 h-4" />
           Start Over
         </button>
+      </div>
+    </motion.div>
+  );
+}
+
+// ============================================================================
+// RESUME PROMPT COMPONENT
+// ============================================================================
+
+/**
+ * Prompt shown when a resumable session is detected.
+ *
+ * Offers users the choice to continue from where they left off or start fresh.
+ * This prevents frustration from losing progress due to accidental page refresh.
+ *
+ * @param stepName - Human-readable name of the step to resume from
+ * @param stepNumber - 1-based step number for display
+ * @param onResume - Callback when user chooses to resume
+ * @param onStartFresh - Callback when user chooses to start over
+ */
+interface ResumePromptProps {
+  stepName: string;
+  stepNumber: number;
+  onResume: () => void;
+  onStartFresh: () => void;
+}
+
+function ResumePrompt({ stepName, stepNumber, onResume, onStartFresh }: ResumePromptProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="p-[var(--space-6)] rounded-2xl bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/30"
+    >
+      <div className="flex items-start gap-[var(--space-4)]">
+        <div className="w-12 h-12 rounded-xl bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
+          <PlayCircle className="w-6 h-6 text-cyan-400" />
+        </div>
+        <div className="flex-1">
+          <h3 className="heading-secondary text-white mb-1">Resume Your Progress</h3>
+          <p className="body-default text-zinc-400">
+            You have an incomplete onboarding session. Would you like to continue from{" "}
+            <span className="text-cyan-400 font-medium">Step {stepNumber}: {stepName}</span>?
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-[var(--space-3)] mt-[var(--space-4)]">
+        <motion.button
+          onClick={onResume}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="flex-1 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-white font-medium flex items-center justify-center gap-2"
+          data-testid="onboarding-resume-btn"
+        >
+          <PlayCircle className="w-4 h-4" />
+          Resume from Step {stepNumber}
+        </motion.button>
+        <motion.button
+          onClick={onStartFresh}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="px-4 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium flex items-center justify-center gap-2"
+          data-testid="onboarding-start-fresh-btn"
+        >
+          <X className="w-4 h-4" />
+          Start Fresh
+        </motion.button>
       </div>
     </motion.div>
   );
@@ -1064,18 +1279,124 @@ function CompletionScreen({ onReset }: { onReset: () => void }) {
  * ```
  */
 export function WorkerOnboarding() {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [steps, setSteps] = useState<OnboardingStep[]>([
+  // Persistence hook for localStorage state management
+  const {
+    loadState,
+    saveState,
+    clearState,
+    hasResumableSession,
+    getResumeStepName
+  } = useOnboardingPersistence();
+
+  // Initial step definitions
+  const initialSteps: OnboardingStep[] = [
     { id: "install", title: "Install", description: "Download worker software", icon: Download, status: "active" },
     { id: "configure", title: "Configure", description: "Set wallet and models", icon: Settings, status: "pending" },
     { id: "download", title: "Download", description: "Fetch model weights", icon: HardDrive, status: "pending" },
     { id: "benchmark", title: "Benchmark", description: "Test hardware", icon: Gauge, status: "pending" },
     { id: "stake", title: "Stake", description: "Lock collateral", icon: Coins, status: "pending" },
     { id: "register", title: "Register", description: "Submit on-chain", icon: FileCheck, status: "pending" },
-  ]);
+  ];
+
+  const [currentStep, setCurrentStep] = useState(0);
+  const [steps, setSteps] = useState<OnboardingStep[]>(initialSteps);
   const [isComplete, setIsComplete] = useState(false);
 
-  const completeStep = () => {
+  // Resume prompt state
+  const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const [resumeData, setResumeData] = useState<OnboardingPersistedState | null>(null);
+
+  // Persisted form data
+  const [configData, setConfigData] = useState<{
+    walletAddress: string;
+    selectedModels: string[];
+  }>({ walletAddress: "", selectedModels: [SUPPORTED_MODELS[0].id] });
+  const [benchmarkResults, setBenchmarkResults] = useState<BenchmarkResults | null>(null);
+  const [stakeAmount, setStakeAmount] = useState(10_000_000);
+
+  // Track if we've loaded persisted state
+  const hasLoadedRef = useRef(false);
+
+  // Check for resumable session on mount
+  useEffect(() => {
+    if (hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
+
+    if (hasResumableSession()) {
+      const saved = loadState();
+      if (saved) {
+        setResumeData(saved);
+        setShowResumePrompt(true);
+      }
+    }
+  }, [hasResumableSession, loadState]);
+
+  // Handle resuming from saved state
+  const handleResume = useCallback(() => {
+    if (!resumeData) return;
+
+    // Restore step states
+    const restoredSteps = initialSteps.map((step, index) => {
+      const savedStatus = resumeData.stepStatuses[step.id];
+      if (savedStatus) {
+        return { ...step, status: savedStatus };
+      }
+      // For steps without saved status, infer from currentStep
+      if (index < resumeData.currentStep) {
+        return { ...step, status: "complete" as StepStatus };
+      }
+      if (index === resumeData.currentStep) {
+        return { ...step, status: "active" as StepStatus };
+      }
+      return { ...step, status: "pending" as StepStatus };
+    });
+
+    setSteps(restoredSteps);
+    setCurrentStep(resumeData.currentStep);
+    setIsComplete(resumeData.isComplete);
+
+    // Restore form data
+    if (resumeData.configureData) {
+      setConfigData(resumeData.configureData);
+    }
+    if (resumeData.benchmarkResults) {
+      setBenchmarkResults(resumeData.benchmarkResults);
+    }
+    if (resumeData.stakeAmount) {
+      setStakeAmount(resumeData.stakeAmount);
+    }
+
+    setShowResumePrompt(false);
+  }, [resumeData, initialSteps]);
+
+  // Handle starting fresh
+  const handleStartFresh = useCallback(() => {
+    clearState();
+    setShowResumePrompt(false);
+    setResumeData(null);
+  }, [clearState]);
+
+  // Save state whenever it changes
+  useEffect(() => {
+    if (showResumePrompt) return; // Don't save while showing resume prompt
+
+    const stepStatuses: Record<string, StepStatus> = {};
+    steps.forEach(step => {
+      stepStatuses[step.id] = step.status;
+    });
+
+    saveState({
+      currentStep,
+      stepStatuses,
+      isComplete,
+      configureData: configData,
+      benchmarkResults,
+      stakeAmount,
+    });
+  }, [currentStep, steps, isComplete, configData, benchmarkResults, stakeAmount, saveState, showResumePrompt]);
+
+  // Complete current step and advance
+  const completeStep = useCallback(() => {
     setSteps((prev) =>
       prev.map((step, i) => {
         if (i === currentStep) return { ...step, status: "complete" as StepStatus };
@@ -1088,32 +1409,74 @@ export function WorkerOnboarding() {
       setCurrentStep((prev) => prev + 1);
     } else {
       setIsComplete(true);
+      // Clear persisted state on completion
+      clearState();
     }
-  };
+  }, [currentStep, steps.length, clearState]);
 
-  const resetOnboarding = () => {
+  // Reset onboarding to start fresh
+  const resetOnboarding = useCallback(() => {
     setCurrentStep(0);
     setIsComplete(false);
-    setSteps((prev) =>
-      prev.map((step, i) => ({
+    setConfigData({ walletAddress: "", selectedModels: [SUPPORTED_MODELS[0].id] });
+    setBenchmarkResults(null);
+    setStakeAmount(10_000_000);
+    setSteps(
+      initialSteps.map((step, i) => ({
         ...step,
         status: i === 0 ? "active" : "pending",
       }))
     );
-  };
+    clearState();
+  }, [initialSteps, clearState]);
 
+  // Handle config changes from ConfigureStep
+  const handleConfigChange = useCallback((walletAddress: string, selectedModels: string[]) => {
+    setConfigData({ walletAddress, selectedModels });
+  }, []);
+
+  // Handle benchmark results from BenchmarkStep
+  const handleBenchmarkResults = useCallback((results: BenchmarkResults) => {
+    setBenchmarkResults(results);
+  }, []);
+
+  // Handle stake amount changes from StakeStep
+  const handleStakeAmountChange = useCallback((amount: number) => {
+    setStakeAmount(amount);
+  }, []);
+
+  // Render step content with persisted data
   const renderStepContent = () => {
     switch (steps[currentStep].id) {
       case "install":
         return <InstallStep onComplete={completeStep} />;
       case "configure":
-        return <ConfigureStep onComplete={completeStep} />;
+        return (
+          <ConfigureStep
+            onComplete={completeStep}
+            initialWalletAddress={configData.walletAddress}
+            initialSelectedModels={configData.selectedModels}
+            onConfigChange={handleConfigChange}
+          />
+        );
       case "download":
         return <DownloadModelsStep onComplete={completeStep} />;
       case "benchmark":
-        return <BenchmarkStep onComplete={completeStep} />;
+        return (
+          <BenchmarkStep
+            onComplete={completeStep}
+            initialResults={benchmarkResults}
+            onResultsChange={handleBenchmarkResults}
+          />
+        );
       case "stake":
-        return <StakeStep onComplete={completeStep} />;
+        return (
+          <StakeStep
+            onComplete={completeStep}
+            initialStakeAmount={stakeAmount}
+            onStakeAmountChange={handleStakeAmountChange}
+          />
+        );
       case "register":
         return <RegisterStep onComplete={completeStep} />;
       default:
@@ -1122,7 +1485,7 @@ export function WorkerOnboarding() {
   };
 
   return (
-    <div className="space-y-[var(--space-6)]">
+    <div className="space-y-[var(--space-6)]" data-testid="worker-onboarding">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -1134,34 +1497,46 @@ export function WorkerOnboarding() {
             Complete the onboarding process to start earning QUBIC
           </p>
         </div>
-        {!isComplete && (
-          <span className="caption text-zinc-500">
+        {!isComplete && !showResumePrompt && (
+          <span className="caption text-zinc-500" data-testid="onboarding-step-counter">
             Step {currentStep + 1} of {steps.length}
           </span>
         )}
       </div>
 
+      {/* Resume Prompt */}
+      {showResumePrompt && resumeData && (
+        <ResumePrompt
+          stepName={getResumeStepName(resumeData.currentStep)}
+          stepNumber={resumeData.currentStep + 1}
+          onResume={handleResume}
+          onStartFresh={handleStartFresh}
+        />
+      )}
+
       {/* Progress Steps */}
-      {!isComplete && <StepIndicator steps={steps} currentStep={currentStep} />}
+      {!isComplete && !showResumePrompt && <StepIndicator steps={steps} currentStep={currentStep} />}
 
       {/* Step Content */}
-      <GlassCard>
-        <AnimatePresence mode="wait">
-          {isComplete ? (
-            <CompletionScreen onReset={resetOnboarding} />
-          ) : (
-            <motion.div
-              key={currentStep}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-            >
-              {renderStepContent()}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </GlassCard>
+      {!showResumePrompt && (
+        <GlassCard>
+          <AnimatePresence mode="wait">
+            {isComplete ? (
+              <CompletionScreen onReset={resetOnboarding} />
+            ) : (
+              <motion.div
+                key={currentStep}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+              >
+                {renderStepContent()}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </GlassCard>
+      )}
     </div>
   );
 }

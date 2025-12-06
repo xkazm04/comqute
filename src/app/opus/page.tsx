@@ -1,37 +1,13 @@
 "use client";
 
-import { useState, useEffect, memo, useRef } from "react";
-import { OpusLayout, ContentWrapper, ContentSkeleton, type TabId } from "../features/opus/components/Layout";
-import { RequesterDashboard } from "../features/opus/components/RequesterDashboard";
-import { WorkerDashboard } from "../features/opus/components/WorkerDashboard";
-import { NetworkExplorer } from "../features/opus/components/NetworkExplorer";
-import { PoolMarketplace } from "../features/opus/components/PoolMarketplace";
+import { memo, useState, useCallback } from "react";
+import { OpusLayout, ContentWrapper, type TabId } from "../features/opus/components/Layout";
+import { SuspenseContent } from "../features/opus/shared";
+import { RequesterDashboard } from "../features/developer/RequesterDashboard";
+import { WorkerDashboard } from "../features/worker/WorkerDashboard";
+import { NetworkExplorer } from "../features/explorer/NetworkExplorer";
+import { PoolMarketplace } from "../features/marketplace/PoolMarketplace";
 import { TabErrorBoundary } from "../features/opus/shared/TabErrorBoundary";
-
-// ============================================================================
-// DELAYED CONTENT LOADER
-// ============================================================================
-
-function DelayedContent({
-  children,
-  delay = 150,
-}: {
-  children: React.ReactNode;
-  delay?: number;
-}) {
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setShow(true), delay);
-    return () => clearTimeout(timer);
-  }, [delay]);
-
-  if (!show) {
-    return <ContentSkeleton />;
-  }
-
-  return <>{children}</>;
-}
 
 // ============================================================================
 // TAB COMPONENT NAMES (for error boundary reporting)
@@ -85,12 +61,12 @@ function TabPanel({ tabId, isActive, hasBeenMounted }: TabPanelProps) {
     >
       <ContentWrapper tabId={tabId} isActive={isActive}>
         <TabErrorBoundary componentName={TAB_COMPONENT_NAMES[tabId]}>
-          <DelayedContent delay={100}>
+          <SuspenseContent data-testid={`tab-content-${tabId}`}>
             {tabId === "requester" && <MemoizedRequesterDashboard />}
             {tabId === "worker" && <MemoizedWorkerDashboard />}
             {tabId === "marketplace" && <MemoizedPoolMarketplace />}
             {tabId === "explorer" && <MemoizedNetworkExplorer />}
-          </DelayedContent>
+          </SuspenseContent>
         </TabErrorBoundary>
       </ContentWrapper>
     </div>
@@ -109,22 +85,28 @@ const ALL_TAB_IDS: TabId[] = ["requester", "worker", "marketplace", "explorer"];
 
 export default function OpusPage() {
   const [activeTab, setActiveTab] = useState<TabId>("requester");
-  // Track which tabs have been mounted (lazy loading - only mount when first visited)
-  const mountedTabsRef = useRef<Set<TabId>>(new Set(["requester"]));
+  // Track which tabs have been mounted using state instead of ref to trigger re-renders
+  const [mountedTabs, setMountedTabs] = useState<Set<TabId>>(new Set(["requester"]));
 
-  // When tab changes, mark it as mounted
-  useEffect(() => {
-    mountedTabsRef.current.add(activeTab);
-  }, [activeTab]);
+  // Handle tab changes and ensure new tabs are marked as mounted
+  const handleTabChange = useCallback((newTab: TabId) => {
+    setMountedTabs((prev) => {
+      if (prev.has(newTab)) return prev;
+      const next = new Set(prev);
+      next.add(newTab);
+      return next;
+    });
+    setActiveTab(newTab);
+  }, []);
 
   return (
-    <OpusLayout activeTab={activeTab} onTabChange={setActiveTab}>
+    <OpusLayout activeTab={activeTab} onTabChange={handleTabChange}>
       {ALL_TAB_IDS.map((tabId) => (
         <TabPanel
           key={tabId}
           tabId={tabId}
           isActive={activeTab === tabId}
-          hasBeenMounted={mountedTabsRef.current.has(tabId)}
+          hasBeenMounted={mountedTabs.has(tabId)}
         />
       ))}
     </OpusLayout>

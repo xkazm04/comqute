@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, useAnimation } from "framer-motion";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 
 export interface StatusIndicatorProps {
   online: boolean;
@@ -38,29 +39,32 @@ export function StatusIndicator({ online, label, "data-testid": testId }: Status
   const controls = useAnimation();
   const prevOnlineRef = useRef<boolean | null>(null);
   const [isFirstRender, setIsFirstRender] = useState(true);
+  const prefersReducedMotion = useReducedMotion();
 
   // Trigger animations on online status change
   useEffect(() => {
-    // Skip animation on first render
+    // Skip animation on first render or if user prefers reduced motion
     if (isFirstRender) {
       setIsFirstRender(false);
       prevOnlineRef.current = online;
       return;
     }
 
-    // Only animate if status actually changed
+    // Only animate if status actually changed and user doesn't prefer reduced motion
     if (prevOnlineRef.current !== online) {
       prevOnlineRef.current = online;
 
-      if (!online) {
-        // Shake animation when going offline
-        controls.start("shake");
-      } else {
-        // Scale bounce when coming online
-        controls.start("bounce");
+      if (!prefersReducedMotion) {
+        if (!online) {
+          // Shake animation when going offline
+          controls.start("shake");
+        } else {
+          // Scale bounce when coming online
+          controls.start("bounce");
+        }
       }
     }
-  }, [online, controls, isFirstRender]);
+  }, [online, controls, isFirstRender, prefersReducedMotion]);
 
   return (
     <motion.div
@@ -75,8 +79,17 @@ export function StatusIndicator({ online, label, "data-testid": testId }: Status
     >
       <motion.div
         className={`w-1.5 h-1.5 rounded-full ${online ? "bg-emerald-500" : "bg-red-500"}`}
-        animate={online ? { opacity: [1, 0.5, 1], scale: [1, 1.2, 1] } : { scale: 1 }}
-        transition={{ duration: 2, repeat: online ? Infinity : 0 }}
+        animate={
+          prefersReducedMotion
+            ? { scale: 1 }
+            : online
+              ? { opacity: [1, 0.5, 1], scale: [1, 1.2, 1] }
+              : { scale: 1 }
+        }
+        transition={{
+          duration: prefersReducedMotion ? 0 : 2,
+          repeat: prefersReducedMotion ? 0 : online ? Infinity : 0,
+        }}
         style={{
           transition: "background-color 200ms ease-out",
         }}

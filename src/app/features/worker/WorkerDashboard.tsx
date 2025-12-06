@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Power,
@@ -23,6 +23,10 @@ import {
   Users,
   TrendingUp,
   Award,
+  Flame,
+  ChevronDown,
+  ChevronUp,
+  Wallet,
 } from "lucide-react";
 import {
   GlassCard,
@@ -35,18 +39,18 @@ import {
   parseOllamaError,
   isConnectionError,
   InfoRow,
-} from "../shared";
-import type { OllamaError } from "../shared";
-import { WorkerFlowDiagram } from "./FlowDiagram";
+} from "../opus/shared";
+import type { OllamaError } from "../opus/shared";
+import { WorkerFlowDiagram } from "../opus/components/FlowDiagram";
 import { WorkerOnboarding } from "./WorkerOnboarding";
 import { StarRating, ReputationBadge } from "./WorkerProfile";
 import { useWorker } from "@/hooks";
 import { useInference } from "@/hooks";
-import { useReviewStore } from "@/stores";
+import { useReviewStore, useWalletStore } from "@/stores";
 import { formatQubic, formatDuration, formatRelativeTime } from "@/lib/mock-utils";
 import { getModelById } from "@/lib/models";
-import { useWorkerPipeline } from "../lib/job-pipeline";
-import type { WorkerJobView } from "../lib/job-pipeline";
+import { useWorkerPipeline } from "../opus/lib/job-pipeline";
+import type { WorkerJobView } from "../opus/lib/job-pipeline";
 import type { Job } from "@/types";
 
 // ============================================================================
@@ -185,64 +189,386 @@ function WorkerStatusToggle({
 }
 
 // ============================================================================
-// PENDING JOB ROW (non-glass) - Uses WorkerJobView from pipeline
+// INFERENCE PROGRESS STATE
 // ============================================================================
+
+type InferencePhase = "idle" | "warmup" | "generating" | "complete" | "error";
+
+interface InferenceProgressState {
+  phase: InferencePhase;
+  tokenCount: number;
+  estimatedMaxTokens: number;
+  tokensPerSecond: number;
+  warmupProgress: number; // 0-100 for model loading
+  elapsedMs: number;
+  estimatedRemainingMs: number;
+  streamPreview: string;
+}
+
+const getDefaultInferenceProgress = (): InferenceProgressState => ({
+  phase: "idle",
+  tokenCount: 0,
+  estimatedMaxTokens: 256, // Default estimate
+  tokensPerSecond: 0,
+  warmupProgress: 0,
+  elapsedMs: 0,
+  estimatedRemainingMs: 0,
+  streamPreview: "",
+});
+
+// ============================================================================
+// INFERENCE PROGRESS BAR - Determinate progress indicator
+// ============================================================================
+
+interface InferenceProgressBarProps {
+  progress: InferenceProgressState;
+  "data-testid"?: string;
+}
+
+function InferenceProgressBar({ progress, "data-testid": testId }: InferenceProgressBarProps) {
+  const { phase, tokenCount, estimatedMaxTokens, warmupProgress, tokensPerSecond, estimatedRemainingMs } = progress;
+
+  // Calculate progress percentage
+  const progressPercent = phase === "warmup"
+    ? warmupProgress
+    : phase === "generating" || phase === "complete"
+    ? Math.min((tokenCount / estimatedMaxTokens) * 100, 100)
+    : 0;
+
+  // Format remaining time
+  const formatRemainingTime = (ms: number): string => {
+    if (ms <= 0) return "—";
+    const seconds = Math.ceil(ms / 1000);
+    if (seconds < 60) return `~${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `~${minutes}m ${secs}s`;
+  };
+
+  // Get phase-specific colors and labels
+  const getPhaseConfig = () => {
+    switch (phase) {
+      case "warmup":
+        return {
+          barColor: "bg-amber-500",
+          bgColor: "bg-amber-500/10",
+          borderColor: "border-amber-500/30",
+          textColor: "text-amber-400",
+          icon: <Flame className="w-3 h-3 text-amber-400 animate-pulse" />,
+          label: "Warming up model...",
+        };
+      case "generating":
+        return {
+          barColor: "bg-cyan-500",
+          bgColor: "bg-cyan-500/10",
+          borderColor: "border-cyan-500/30",
+          textColor: "text-cyan-400",
+          icon: <Activity className="w-3 h-3 text-cyan-400 animate-pulse" />,
+          label: "Generating...",
+        };
+      case "complete":
+        return {
+          barColor: "bg-emerald-500",
+          bgColor: "bg-emerald-500/10",
+          borderColor: "border-emerald-500/30",
+          textColor: "text-emerald-400",
+          icon: <CheckCircle className="w-3 h-3 text-emerald-400" />,
+          label: "Complete",
+        };
+      case "error":
+        return {
+          barColor: "bg-red-500",
+          bgColor: "bg-red-500/10",
+          borderColor: "border-red-500/30",
+          textColor: "text-red-400",
+          icon: <AlertTriangle className="w-3 h-3 text-red-400" />,
+          label: "Error",
+        };
+      default:
+        return {
+          barColor: "bg-zinc-600",
+          bgColor: "bg-zinc-800",
+          borderColor: "border-zinc-700",
+          textColor: "text-zinc-500",
+          icon: <Play className="w-3 h-3 text-zinc-500" />,
+          label: "Ready",
+        };
+    }
+  };
+
+  const config = getPhaseConfig();
+
+  return (
+    <div className="space-y-2" data-testid={testId}>
+      {/* Progress Bar */}
+      <div className={`h-2 rounded-full ${config.bgColor} border ${config.borderColor} overflow-hidden`}>
+        <motion.div
+          className={`h-full ${config.barColor} rounded-full`}
+          initial={{ width: 0 }}
+          animate={{ width: `${progressPercent}%` }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          data-testid={testId ? `${testId}-bar` : undefined}
+        />
+      </div>
+
+      {/* Stats Row */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {config.icon}
+          <span className={`micro ${config.textColor}`} data-testid={testId ? `${testId}-phase-label` : undefined}>
+            {config.label}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3 micro text-zinc-500">
+          {phase === "generating" && (
+            <>
+              <span data-testid={testId ? `${testId}-tokens` : undefined}>
+                {tokenCount} / ~{estimatedMaxTokens} tokens
+              </span>
+              {tokensPerSecond > 0 && (
+                <span data-testid={testId ? `${testId}-speed` : undefined}>
+                  {tokensPerSecond.toFixed(1)} tok/s
+                </span>
+              )}
+              <span className={config.textColor} data-testid={testId ? `${testId}-remaining` : undefined}>
+                {formatRemainingTime(estimatedRemainingMs)}
+              </span>
+            </>
+          )}
+          {phase === "warmup" && (
+            <span data-testid={testId ? `${testId}-warmup-percent` : undefined}>
+              {Math.round(warmupProgress)}% loaded
+            </span>
+          )}
+          {phase === "complete" && (
+            <span className="text-emerald-400" data-testid={testId ? `${testId}-complete-tokens` : undefined}>
+              {tokenCount} tokens generated
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// STREAMING OUTPUT PREVIEW - Inline preview in the row
+// ============================================================================
+
+interface StreamingPreviewProps {
+  output: string;
+  isStreaming: boolean;
+  maxLength?: number;
+  "data-testid"?: string;
+}
+
+function StreamingPreview({ output, isStreaming, maxLength = 120, "data-testid": testId }: StreamingPreviewProps) {
+  if (!output && !isStreaming) return null;
+
+  const displayText = output.length > maxLength ? `...${output.slice(-maxLength)}` : output;
+
+  return (
+    <div
+      className="mt-2 p-2 rounded-lg bg-black/40 border border-zinc-800/50 font-mono text-xs overflow-hidden"
+      data-testid={testId}
+    >
+      <div className="flex items-start gap-2">
+        <Server className="w-3 h-3 text-purple-400 flex-shrink-0 mt-0.5" />
+        <p className="text-emerald-400/90 whitespace-pre-wrap break-all line-clamp-2">
+          {displayText}
+          {isStreaming && (
+            <span className="inline-block w-1.5 h-3 bg-emerald-400 ml-0.5 animate-pulse" />
+          )}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// PENDING JOB ROW (non-glass) - Enhanced with progress indicators
+// ============================================================================
+
+interface PendingJobRowProps {
+  jobView: WorkerJobView;
+  onClaim: () => void;
+  isProcessing: boolean;
+  inferenceProgress?: InferenceProgressState;
+  streamOutput?: string;
+  isStreaming?: boolean;
+  isWalletConnected?: boolean;
+}
 
 function PendingJobRow({
   jobView,
   onClaim,
   isProcessing,
-}: {
-  jobView: WorkerJobView;
-  onClaim: () => void;
-  isProcessing: boolean;
-}) {
+  inferenceProgress,
+  streamOutput = "",
+  isStreaming = false,
+  isWalletConnected = true,
+}: PendingJobRowProps) {
   const model = getModelById(jobView.modelId);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Use provided progress or default
+  const progress = inferenceProgress || getDefaultInferenceProgress();
+
+  // Determine if we're actively processing this job
+  const isActivelyProcessing = isProcessing && progress.phase !== "idle";
+
+  // Auto-expand when processing starts
+  useEffect(() => {
+    if (isActivelyProcessing && !isExpanded) {
+      setIsExpanded(true);
+    }
+  }, [isActivelyProcessing, isExpanded]);
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
-      className="flex items-center gap-4 p-3 rounded-lg bg-zinc-900/30 border border-zinc-800/50 hover:border-zinc-700 transition-colors"
+      className={`rounded-lg bg-zinc-900/30 border transition-colors ${
+        isActivelyProcessing
+          ? "border-cyan-500/30 bg-zinc-900/50"
+          : "border-zinc-800/50 hover:border-zinc-700"
+      }`}
       data-testid={`pending-job-${jobView.id}`}
     >
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="px-2 py-0.5 rounded-full micro bg-amber-400/10 text-amber-400 border border-amber-400/20">
-            Pending
-          </span>
-          <span className="micro text-zinc-500">{model?.displayName}</span>
-          {/* Show queue duration from pipeline */}
-          <span className="micro text-zinc-600">
-            • {formatDuration(jobView.queueDuration)} in queue
-          </span>
+      {/* Main Row */}
+      <div className="flex items-center gap-4 p-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            {isActivelyProcessing ? (
+              <span className="px-2 py-0.5 rounded-full micro bg-cyan-400/10 text-cyan-400 border border-cyan-400/20 flex items-center gap-1">
+                <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                Processing
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 rounded-full micro bg-amber-400/10 text-amber-400 border border-amber-400/20">
+                Pending
+              </span>
+            )}
+            <span className="micro text-zinc-500">{model?.displayName}</span>
+            {/* Show queue duration from pipeline */}
+            {!isActivelyProcessing && (
+              <span className="micro text-zinc-600">
+                • {formatDuration(jobView.queueDuration)} in queue
+              </span>
+            )}
+          </div>
+          <p className="body-default text-zinc-300 truncate">
+            {jobView.prompt.slice(0, 60)}{jobView.prompt.length > 60 ? "..." : ""}
+          </p>
+          <div className="flex items-center gap-3 micro text-zinc-500 mt-1">
+            <span>{formatRelativeTime(jobView.createdAt)}</span>
+            {/* Use potentialEarnings from pipeline view */}
+            <span className="text-emerald-400">{formatQubic(jobView.potentialEarnings)} QUBIC</span>
+          </div>
+
+          {/* Inline streaming preview when processing but not expanded */}
+          {isActivelyProcessing && !isExpanded && streamOutput && (
+            <StreamingPreview
+              output={streamOutput}
+              isStreaming={isStreaming}
+              maxLength={80}
+              data-testid={`pending-job-${jobView.id}-inline-preview`}
+            />
+          )}
         </div>
-        <p className="body-default text-zinc-300 truncate">
-          {jobView.prompt.slice(0, 60)}{jobView.prompt.length > 60 ? "..." : ""}
-        </p>
-        <div className="flex items-center gap-3 micro text-zinc-500 mt-1">
-          <span>{formatRelativeTime(jobView.createdAt)}</span>
-          {/* Use potentialEarnings from pipeline view */}
-          <span className="text-emerald-400">{formatQubic(jobView.potentialEarnings)} QUBIC</span>
+
+        <div className="flex items-center gap-2">
+          {/* Expand/Collapse button when processing */}
+          {isActivelyProcessing && (
+            <motion.button
+              onClick={() => setIsExpanded(!isExpanded)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+              data-testid={`pending-job-${jobView.id}-expand-btn`}
+            >
+              {isExpanded ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </motion.button>
+          )}
+
+          {/* Claim button */}
+          <motion.button
+            onClick={onClaim}
+            disabled={isProcessing || !jobView.canClaim || !isWalletConnected}
+            whileHover={{ scale: isWalletConnected ? 1.05 : 1 }}
+            whileTap={{ scale: isWalletConnected ? 0.95 : 1 }}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg caption-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+              isWalletConnected
+                ? "bg-emerald-500 hover:bg-emerald-400 text-white"
+                : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+            }`}
+            data-testid={`claim-job-btn-${jobView.id}`}
+            title={!isWalletConnected ? "Connect wallet to claim jobs" : undefined}
+          >
+            {isProcessing ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : !isWalletConnected ? (
+              <Wallet className="w-3.5 h-3.5" />
+            ) : (
+              <Play className="w-3.5 h-3.5" />
+            )}
+            {isActivelyProcessing ? "Processing..." : !isWalletConnected ? "Connect Wallet" : "Claim & Process"}
+          </motion.button>
         </div>
       </div>
 
-      <motion.button
-        onClick={onClaim}
-        disabled={isProcessing || !jobView.canClaim}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-white caption-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        data-testid={`claim-job-btn-${jobView.id}`}
-      >
-        {isProcessing ? (
-          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-        ) : (
-          <Play className="w-3.5 h-3.5" />
+      {/* Expanded Progress Section */}
+      <AnimatePresence>
+        {isExpanded && isActivelyProcessing && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-3 pb-3 space-y-3 border-t border-zinc-800/50 pt-3">
+              {/* Progress Bar */}
+              <InferenceProgressBar
+                progress={progress}
+                data-testid={`pending-job-${jobView.id}-progress`}
+              />
+
+              {/* Streaming Output Preview */}
+              {streamOutput && (
+                <div className="p-2.5 rounded-lg bg-black/50 border border-zinc-800 font-mono text-xs">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Server className="w-3 h-3 text-purple-400" />
+                    <span className="micro text-zinc-500">Ollama Response</span>
+                    {isStreaming && (
+                      <span className="px-1.5 py-0.5 rounded micro bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        Live
+                      </span>
+                    )}
+                  </div>
+                  <div className="max-h-[100px] overflow-y-auto">
+                    <p
+                      className="text-emerald-400/90 whitespace-pre-wrap break-words"
+                      data-testid={`pending-job-${jobView.id}-stream-output`}
+                    >
+                      {streamOutput}
+                      {isStreaming && (
+                        <span className="inline-block w-1.5 h-3 bg-emerald-400 ml-0.5 animate-pulse" />
+                      )}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
         )}
-        Claim & Process
-      </motion.button>
+      </AnimatePresence>
     </motion.div>
   );
 }
@@ -500,6 +826,156 @@ function OllamaConnectionPanel({ ollamaError, onCheckConnection }: OllamaConnect
 }
 
 // ============================================================================
+// CUSTOM HOOK: useInferenceProgress - Track detailed inference progress
+// ============================================================================
+
+function useInferenceProgress(currentJobId: string | null, isProcessing: boolean) {
+  const { output, isStreaming, tokenCount } = useInference();
+  const [progress, setProgress] = useState<InferenceProgressState>(getDefaultInferenceProgress());
+  const startTimeRef = useRef<number | null>(null);
+  const lastTokenCountRef = useRef(0);
+  const tokenTimestampsRef = useRef<number[]>([]);
+
+  // Estimate max tokens based on model (simplified for demo)
+  const estimatedMaxTokens = 256;
+
+  // Reset when job changes
+  useEffect(() => {
+    if (!currentJobId) {
+      setProgress(getDefaultInferenceProgress());
+      startTimeRef.current = null;
+      lastTokenCountRef.current = 0;
+      tokenTimestampsRef.current = [];
+    }
+  }, [currentJobId]);
+
+  // Track inference progress
+  useEffect(() => {
+    if (!isProcessing || !currentJobId) return;
+
+    const now = Date.now();
+
+    // Initialize start time on first processing
+    if (startTimeRef.current === null) {
+      startTimeRef.current = now;
+      // Simulate warmup phase for the first ~1 second
+      setProgress((prev) => ({
+        ...prev,
+        phase: "warmup",
+        warmupProgress: 0,
+      }));
+
+      // Simulate warmup progress
+      const warmupInterval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev.phase !== "warmup") {
+            clearInterval(warmupInterval);
+            return prev;
+          }
+          const newWarmup = Math.min(prev.warmupProgress + 15, 100);
+          if (newWarmup >= 100) {
+            clearInterval(warmupInterval);
+            return { ...prev, phase: "generating", warmupProgress: 100 };
+          }
+          return { ...prev, warmupProgress: newWarmup };
+        });
+      }, 150);
+
+      return () => clearInterval(warmupInterval);
+    }
+
+    // Track tokens per second
+    if (tokenCount > lastTokenCountRef.current) {
+      tokenTimestampsRef.current.push(now);
+      // Keep last 10 token timestamps for speed calculation
+      if (tokenTimestampsRef.current.length > 10) {
+        tokenTimestampsRef.current.shift();
+      }
+    }
+    lastTokenCountRef.current = tokenCount;
+
+    // Calculate tokens per second
+    let tokensPerSecond = 0;
+    if (tokenTimestampsRef.current.length >= 2) {
+      const firstTimestamp = tokenTimestampsRef.current[0];
+      const lastTimestamp = tokenTimestampsRef.current[tokenTimestampsRef.current.length - 1];
+      const timeSpanSec = (lastTimestamp - firstTimestamp) / 1000;
+      if (timeSpanSec > 0) {
+        tokensPerSecond = tokenTimestampsRef.current.length / timeSpanSec;
+      }
+    }
+
+    // Calculate estimated remaining time
+    const remainingTokens = Math.max(0, estimatedMaxTokens - tokenCount);
+    const estimatedRemainingMs = tokensPerSecond > 0
+      ? (remainingTokens / tokensPerSecond) * 1000
+      : 0;
+
+    const elapsedMs = now - startTimeRef.current;
+
+    setProgress((prev) => ({
+      ...prev,
+      phase: isStreaming ? "generating" : tokenCount > 0 ? "complete" : prev.phase,
+      tokenCount,
+      estimatedMaxTokens,
+      tokensPerSecond,
+      elapsedMs,
+      estimatedRemainingMs,
+      streamPreview: output.slice(-200), // Keep last 200 chars for preview
+    }));
+  }, [isProcessing, currentJobId, tokenCount, isStreaming, output, estimatedMaxTokens]);
+
+  return {
+    progress,
+    output,
+    isStreaming,
+    tokenCount,
+  };
+}
+
+// ============================================================================
+// WALLET DISCONNECTED WARNING - Inline banner for wallet state
+// ============================================================================
+
+interface WalletDisconnectedWarningProps {
+  onConnect: () => void;
+}
+
+function WalletDisconnectedWarning({ onConnect }: WalletDisconnectedWarningProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      className="flex items-center justify-between p-[var(--space-4)] rounded-xl bg-amber-500/10 border border-amber-500/30"
+      data-testid="wallet-disconnected-warning"
+    >
+      <div className="flex items-center gap-[var(--space-3)]">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-amber-500/20">
+          <Wallet className="w-5 h-5 text-amber-400" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-amber-400">Wallet Disconnected</h3>
+          <p className="caption text-zinc-400">
+            Connect your wallet to claim jobs and receive payments
+          </p>
+        </div>
+      </div>
+      <motion.button
+        onClick={onConnect}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-medium transition-colors"
+        data-testid="wallet-connect-btn"
+      >
+        <Wallet className="w-4 h-4" />
+        Connect
+      </motion.button>
+    </motion.div>
+  );
+}
+
+// ============================================================================
 // WORKER MANAGEMENT CONTENT - Uses JobPipeline abstraction
 // ============================================================================
 
@@ -517,6 +993,9 @@ function WorkerManagement() {
     claimJob,
   } = useWorker();
 
+  // Get wallet connection state
+  const { wallet, connect: connectWallet } = useWalletStore();
+
   // Use the unified JobPipeline abstraction for worker-specific views
   const {
     state: pipelineState,
@@ -525,13 +1004,52 @@ function WorkerManagement() {
     currentJob: pipelineCurrentJob,
   } = useWorkerPipeline();
 
+  // Track inference progress for the current job
+  const {
+    progress: inferenceProgress,
+    output: streamOutput,
+    isStreaming,
+  } = useInferenceProgress(currentJob?.id || null, isProcessing);
+
+  // Track which job is actively being processed
+  const [processingJobId, setProcessingJobId] = useState<string | null>(null);
+
   const [showSettings, setShowSettings] = useState(false);
   const [ollamaError, setOllamaError] = useState<OllamaError | null>(null);
   const [lastFailedJobId, setLastFailedJobId] = useState<string | null>(null);
 
+  // Track initialization state to prevent re-render issues on first switch
+  const hasInitializedRef = useRef(false);
+
+  // Initialize worker once on mount. The initializeWorker function is stable
+  // (memoized via useCallback in useWorker hook), but we explicitly use an empty
+  // dependency array to ensure single initialization and prevent any potential
+  // infinite loop if upstream dependencies change.
   useEffect(() => {
-    initializeWorker();
-  }, [initializeWorker]);
+    // Only initialize if we haven't already and worker is not present
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      initializeWorker();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Force re-initialization if worker becomes null after initial mount
+  // This handles the case where switching tabs causes hydration issues
+  useEffect(() => {
+    if (hasInitializedRef.current && !worker) {
+      initializeWorker();
+    }
+  }, [worker, initializeWorker]);
+
+  // Track which job is being processed
+  useEffect(() => {
+    if (isProcessing && currentJob?.id) {
+      setProcessingJobId(currentJob.id);
+    } else if (!isProcessing) {
+      setProcessingJobId(null);
+    }
+  }, [isProcessing, currentJob?.id]);
 
   // Monitor current job for failures and parse errors
   useEffect(() => {
@@ -559,6 +1077,13 @@ function WorkerManagement() {
   };
 
   const handleClaimJob = async (jobId: string) => {
+    // Check wallet connection before claiming - prevents escrowing issues
+    if (!wallet.isConnected) {
+      // Show wallet disconnected state - user needs to reconnect
+      console.warn("Cannot claim job: Wallet is disconnected");
+      return;
+    }
+
     // Clear previous error state
     setOllamaError(null);
     // This will claim the job AND process it with Ollama
@@ -588,6 +1113,13 @@ function WorkerManagement() {
 
   return (
     <div className="space-y-[var(--space-6)]">
+      {/* Wallet Disconnected Warning */}
+      <AnimatePresence>
+        {!wallet.isConnected && (
+          <WalletDisconnectedWarning onConnect={connectWallet} />
+        )}
+      </AnimatePresence>
+
       {/* Flow Diagram - Educational */}
       <WorkerFlowDiagram />
 
@@ -596,47 +1128,6 @@ function WorkerManagement() {
         status={worker.status}
         onToggle={handleToggleStatus}
       />
-
-      {/* Stats Row - Enhanced with Upwork-like metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-[var(--space-3)]">
-        <StatItem
-          icon={Star}
-          label="Rating"
-          value={worker.stats.avgRating > 0 ? worker.stats.avgRating.toFixed(1) : "—"}
-          subValue={`${worker.stats.totalReviews} reviews`}
-          color="bg-amber-500/20"
-          data-testid="stat-rating"
-        />
-        <StatItem
-          icon={CheckCircle}
-          label="Completion Rate"
-          value={`${worker.stats.completionRate}%`}
-          color="bg-emerald-500/20"
-          data-testid="stat-completion-rate"
-        />
-        <StatItem
-          icon={Clock}
-          label="Avg Response"
-          value={worker.stats.avgResponseTime > 0 ? formatDuration(worker.stats.avgResponseTime) : "—"}
-          color="bg-blue-500/20"
-          data-testid="stat-avg-response"
-        />
-        <StatItem
-          icon={Users}
-          label="Repeat Clients"
-          value={worker.stats.repeatClients}
-          color="bg-purple-500/20"
-          data-testid="stat-repeat-clients"
-        />
-        <StatItem
-          icon={Coins}
-          label="Total Earnings"
-          value={formatQubic(worker.stats.totalEarnings)}
-          subValue={`${worker.stats.jobsCompleted} jobs`}
-          color="bg-cyan-500/20"
-          data-testid="stat-total-earnings"
-        />
-      </div>
 
       {/* Current Job - Glass Card (processing with Ollama) - Uses pipeline view */}
       {pipelineCurrentJob && (
@@ -710,14 +1201,21 @@ function WorkerManagement() {
               <div className="space-y-2" data-testid="pending-jobs-list">
                 <AnimatePresence>
                   {/* Use pipeline's availableJobs with WorkerJobView */}
-                  {availableJobs.slice(0, 5).map((jobView) => (
-                    <PendingJobRow
-                      key={jobView.id}
-                      jobView={jobView}
-                      onClaim={() => handleClaimJob(jobView.id)}
-                      isProcessing={isProcessing}
-                    />
-                  ))}
+                  {availableJobs.slice(0, 5).map((jobView) => {
+                    const isThisJobProcessing = processingJobId === jobView.id;
+                    return (
+                      <PendingJobRow
+                        key={jobView.id}
+                        jobView={jobView}
+                        onClaim={() => handleClaimJob(jobView.id)}
+                        isProcessing={isProcessing}
+                        inferenceProgress={isThisJobProcessing ? inferenceProgress : undefined}
+                        streamOutput={isThisJobProcessing ? streamOutput : undefined}
+                        isStreaming={isThisJobProcessing ? isStreaming : false}
+                        isWalletConnected={wallet.isConnected}
+                      />
+                    );
+                  })}
                 </AnimatePresence>
               </div>
             )}

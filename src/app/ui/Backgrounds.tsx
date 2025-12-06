@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 
 // ============================================================================
 // HEXAGONAL GRID
@@ -46,6 +47,17 @@ export function HexGrid() {
 // ============================================================================
 
 export function PulseWave() {
+    const prefersReducedMotion = useReducedMotion();
+
+    // For reduced motion, show a static subtle ring instead of animated pulses
+    if (prefersReducedMotion) {
+        return (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="absolute rounded-full border border-cyan-500/10 w-[400px] h-[400px]" />
+            </div>
+        );
+    }
+
     return (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             {[0, 1, 2, 3].map((i) => (
