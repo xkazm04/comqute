@@ -29,8 +29,38 @@ import { SUPPORTED_MODELS } from "@/lib/models";
 // TYPES
 // ============================================================================
 
+/**
+ * Represents the current state of an onboarding step in the wizard.
+ *
+ * Step lifecycle transitions:
+ * - `pending` → Initial state for steps not yet reached
+ * - `active` → The step currently being displayed to the user
+ * - `running` → Step action is in progress (e.g., installation running)
+ * - `complete` → Step has been successfully finished
+ * - `error` → Step encountered an error (requires retry or intervention)
+ *
+ * Only one step should be `active` at any given time. When a step completes,
+ * it transitions to `complete` and the next step becomes `active`.
+ */
 type StepStatus = "pending" | "active" | "running" | "complete" | "error";
 
+/**
+ * Defines the structure for each onboarding step in the worker setup wizard.
+ *
+ * Each step represents a discrete phase of worker node configuration:
+ * 1. Install - Download and install worker software components
+ * 2. Configure - Set wallet address and select supported models
+ * 3. Download - Fetch LLM model weights from IPFS/HuggingFace
+ * 4. Benchmark - Run hardware performance tests
+ * 5. Stake - Lock QUBIC tokens as collateral
+ * 6. Register - Submit worker capabilities to the blockchain
+ *
+ * @property id - Unique identifier used for step switching in renderStepContent()
+ * @property title - Short label displayed in the StepIndicator component
+ * @property description - Brief explanation shown in the step indicator tooltip
+ * @property icon - Lucide icon component displayed in the step circle
+ * @property status - Current state of the step (see StepStatus for lifecycle)
+ */
 interface OnboardingStep {
   id: string;
   title: string;
@@ -43,9 +73,19 @@ interface OnboardingStep {
 // STEP PROGRESS INDICATOR
 // ============================================================================
 
+/**
+ * Visual progress indicator showing all onboarding steps.
+ *
+ * Displays a horizontal stepper with icons, labels, and connecting lines.
+ * Active steps pulse with animation, completed steps show checkmarks,
+ * and running steps display a loading spinner.
+ *
+ * @param steps - Array of OnboardingStep objects defining the wizard flow
+ * @param currentStep - Zero-based index of the currently active step
+ */
 function StepIndicator({ steps, currentStep }: { steps: OnboardingStep[]; currentStep: number }) {
   return (
-    <div className="flex items-center justify-between mb-8">
+    <div className="flex items-center justify-between mb-[var(--space-8)]">
       {steps.map((step, index) => {
         const Icon = step.icon;
         const isActive = index === currentStep;
@@ -77,7 +117,7 @@ function StepIndicator({ steps, currentStep }: { steps: OnboardingStep[]; curren
                   <Icon className={`w-5 h-5 ${isActive ? "text-cyan-400" : "text-zinc-500"}`} />
                 )}
               </motion.div>
-              <span className={`text-[10px] mt-2 ${isActive ? "text-cyan-400" : isPending ? "text-zinc-600" : "text-zinc-400"}`}>
+              <span className={`micro mt-2 ${isActive ? "text-cyan-400" : isPending ? "text-zinc-600" : "text-zinc-400"}`}>
                 {step.title}
               </span>
             </div>
@@ -107,6 +147,19 @@ function StepIndicator({ steps, currentStep }: { steps: OnboardingStep[]; curren
 // TERMINAL OUTPUT COMPONENT
 // ============================================================================
 
+/**
+ * Simulated terminal output display for installation progress.
+ *
+ * Renders output lines with color-coding based on prefixes:
+ * - `$` (green): Command being executed
+ * - `✓` (green): Success message
+ * - `!` (amber): Warning message
+ * - `✗` (red): Error message
+ * - Other (gray): Standard output
+ *
+ * @param lines - Array of terminal output strings to display
+ * @param isRunning - Whether to show a blinking cursor at the end
+ */
 function TerminalOutput({ lines, isRunning }: { lines: string[]; isRunning: boolean }) {
   return (
     <div className="bg-black/80 rounded-lg border border-zinc-800 p-4 font-mono text-xs max-h-[200px] overflow-y-auto">
@@ -148,6 +201,33 @@ function TerminalOutput({ lines, isRunning }: { lines: string[]; isRunning: bool
 // STEP 1: INSTALL
 // ============================================================================
 
+/**
+ * Step 1: Install Worker Software
+ *
+ * Downloads and installs the Qubic Compute Node components required for
+ * running inference jobs on the network.
+ *
+ * **Components Installed:**
+ * - qubic-worker: Main daemon process
+ * - model-manager: LLM weights management
+ * - inference-runtime: vLLM wrapper for model execution
+ * - health-monitor: Status reporting to the network
+ *
+ * **Completion Criteria:**
+ * - All components successfully downloaded
+ * - Dependencies verified (CUDA drivers, Docker, Qubic wallet)
+ * - Installation script completes without errors
+ *
+ * **Behavior:**
+ * 1. User clicks "Start Installation" button
+ * 2. Terminal output simulates installation progress
+ * 3. Progress bar updates as steps complete
+ * 4. On success, `onComplete()` is called after 500ms delay
+ *
+ * @param onComplete - Callback invoked when installation succeeds.
+ *   Triggers transition to the next step (Configure) via the parent's
+ *   `completeStep()` function which updates step statuses.
+ */
 function InstallStep({ onComplete }: { onComplete: () => void }) {
   const [isRunning, setIsRunning] = useState(false);
   const [lines, setLines] = useState<string[]>([]);
@@ -186,37 +266,37 @@ function InstallStep({ onComplete }: { onComplete: () => void }) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start gap-4">
+    <div className="space-y-[var(--space-4)]">
+      <div className="flex items-start gap-[var(--space-4)]">
         <div className="w-12 h-12 rounded-xl bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
           <Download className="w-6 h-6 text-cyan-400" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-white">Install Worker Software</h3>
-          <p className="text-sm text-zinc-400 mt-1">
+          <h3 className="heading-secondary text-white">Install Worker Software</h3>
+          <p className="body-default text-zinc-400 mt-1">
             Download and install the Qubic Compute Node components including the worker daemon,
             model manager, and inference runtime.
           </p>
         </div>
       </div>
 
-      <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-3">
-        <div className="flex items-center gap-3">
+      <div className="p-[var(--space-4)] rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-[var(--space-3)]">
+        <div className="flex items-center gap-[var(--space-3)]">
           <Terminal className="w-4 h-4 text-zinc-500" />
-          <span className="text-xs text-zinc-500">Components to install:</span>
+          <span className="caption text-zinc-500">Components to install:</span>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-[var(--space-2)]">
           {[
             { name: "qubic-worker", desc: "Main daemon" },
             { name: "model-manager", desc: "LLM weights" },
             { name: "inference-runtime", desc: "vLLM wrapper" },
             { name: "health-monitor", desc: "Status reporting" },
           ].map((comp) => (
-            <div key={comp.name} className="flex items-center gap-2 p-2 rounded-lg bg-zinc-800/50">
+            <div key={comp.name} className="flex items-center gap-[var(--space-2)] p-[var(--space-2)] rounded-lg bg-zinc-800/50">
               <Cpu className="w-3.5 h-3.5 text-cyan-400" />
               <div>
-                <span className="text-xs text-zinc-300">{comp.name}</span>
-                <span className="text-[10px] text-zinc-500 ml-2">{comp.desc}</span>
+                <span className="caption text-zinc-300">{comp.name}</span>
+                <span className="micro text-zinc-500 ml-2">{comp.desc}</span>
               </div>
             </div>
           ))}
@@ -226,8 +306,8 @@ function InstallStep({ onComplete }: { onComplete: () => void }) {
       {lines.length > 0 && <TerminalOutput lines={lines} isRunning={isRunning} />}
 
       {isRunning && (
-        <div className="space-y-2">
-          <div className="flex justify-between text-xs text-zinc-500">
+        <div className="space-y-[var(--space-2)]">
+          <div className="flex justify-between caption text-zinc-500">
             <span>Installing...</span>
             <span>{progress}%</span>
           </div>
@@ -261,6 +341,33 @@ function InstallStep({ onComplete }: { onComplete: () => void }) {
 // STEP 2: CONFIGURE
 // ============================================================================
 
+/**
+ * Step 2: Configure Worker
+ *
+ * Allows the user to set their wallet address for receiving payments and
+ * select which LLM models they want to support on their worker node.
+ *
+ * **Required Configuration:**
+ * - Qubic wallet address (for receiving QUBIC payments)
+ * - At least one supported model selected
+ *
+ * **Completion Criteria:**
+ * - Wallet address is at least 10 characters long
+ * - At least one model is selected from the available list
+ *
+ * **Validation:**
+ * - The "Save Configuration" button is disabled until both criteria are met
+ * - No async operations; completion is immediate upon button click
+ *
+ * **Behavior:**
+ * 1. User enters wallet address in input field
+ * 2. User toggles model selection (at least one required)
+ * 3. Button enables when validation passes
+ * 4. On click, `onComplete()` is called immediately
+ *
+ * @param onComplete - Callback invoked when configuration is saved.
+ *   Triggers transition to the next step (Download Models).
+ */
 function ConfigureStep({ onComplete }: { onComplete: () => void }) {
   const [walletAddress, setWalletAddress] = useState("");
   const [selectedModels, setSelectedModels] = useState<string[]>([SUPPORTED_MODELS[0].id]);
@@ -274,23 +381,23 @@ function ConfigureStep({ onComplete }: { onComplete: () => void }) {
   const canContinue = walletAddress.length > 10 && selectedModels.length > 0;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start gap-4">
+    <div className="space-y-[var(--space-4)]">
+      <div className="flex items-start gap-[var(--space-4)]">
         <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
           <Settings className="w-6 h-6 text-amber-400" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-white">Configure Worker</h3>
-          <p className="text-sm text-zinc-400 mt-1">
+          <h3 className="heading-secondary text-white">Configure Worker</h3>
+          <p className="body-default text-zinc-400 mt-1">
             Set your wallet address for receiving payments and choose which models to support.
           </p>
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-[var(--space-4)]">
         {/* Wallet Address */}
-        <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800">
-          <label className="flex items-center gap-2 text-sm text-zinc-400 mb-2">
+        <div className="p-[var(--space-4)] rounded-xl bg-zinc-900/50 border border-zinc-800">
+          <label className="flex items-center gap-[var(--space-2)] body-default text-zinc-400 mb-[var(--space-2)]">
             <Wallet className="w-4 h-4" />
             Qubic Wallet Address
           </label>
@@ -304,12 +411,12 @@ function ConfigureStep({ onComplete }: { onComplete: () => void }) {
         </div>
 
         {/* Model Selection */}
-        <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800">
-          <label className="flex items-center gap-2 text-sm text-zinc-400 mb-3">
+        <div className="p-[var(--space-4)] rounded-xl bg-zinc-900/50 border border-zinc-800">
+          <label className="flex items-center gap-[var(--space-2)] body-default text-zinc-400 mb-[var(--space-3)]">
             <Server className="w-4 h-4" />
             Models to Support
           </label>
-          <div className="space-y-2">
+          <div className="space-y-[var(--space-2)]">
             {SUPPORTED_MODELS.map((model) => {
               const isSelected = selectedModels.includes(model.id);
               return (
@@ -317,20 +424,20 @@ function ConfigureStep({ onComplete }: { onComplete: () => void }) {
                   key={model.id}
                   onClick={() => toggleModel(model.id)}
                   className={`
-                    w-full flex items-center justify-between p-3 rounded-lg transition-all
+                    w-full flex items-center justify-between p-[var(--space-3)] rounded-lg transition-all
                     ${isSelected
                       ? "bg-cyan-500/10 border border-cyan-500/30"
                       : "bg-zinc-800/50 border border-zinc-700 hover:border-zinc-600"
                     }
                   `}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-[var(--space-3)]">
                     <div className={`w-2 h-2 rounded-full ${isSelected ? "bg-cyan-400" : "bg-zinc-600"}`} />
                     <div className="text-left">
-                      <span className={`text-sm ${isSelected ? "text-cyan-400" : "text-zinc-300"}`}>
+                      <span className={`body-default ${isSelected ? "text-cyan-400" : "text-zinc-300"}`}>
                         {model.displayName}
                       </span>
-                      <span className="text-[10px] text-zinc-500 ml-2">{model.description}</span>
+                      <span className="micro text-zinc-500 ml-2">{model.description}</span>
                     </div>
                   </div>
                   {isSelected && <CheckCircle className="w-4 h-4 text-cyan-400" />}
@@ -359,6 +466,35 @@ function ConfigureStep({ onComplete }: { onComplete: () => void }) {
 // STEP 3: DOWNLOAD MODELS
 // ============================================================================
 
+/**
+ * Step 3: Download Models
+ *
+ * Fetches LLM model weights from IPFS/HuggingFace and verifies their
+ * integrity via SHA256 hash comparison.
+ *
+ * **Download Process:**
+ * - Downloads weights for the first 2 models from SUPPORTED_MODELS
+ * - Shows individual progress bars per model
+ * - Verifies hash after each download completes
+ *
+ * **Completion Criteria:**
+ * - All model downloads reach 100% progress
+ * - All model hashes verified successfully
+ * - Status shows "Complete" for all models
+ *
+ * **Behavior:**
+ * 1. User clicks "Download Models" button
+ * 2. Models download sequentially with progress updates
+ * 3. Each model shows "Downloading..." → "Verifying hash..." → "Complete"
+ * 4. On all complete, `onComplete()` is called after 300ms delay
+ *
+ * **State Management:**
+ * - `downloads` tracks progress and status per model ID
+ * - `isRunning` prevents multiple concurrent download sessions
+ *
+ * @param onComplete - Callback invoked when all downloads succeed.
+ *   Triggers transition to the next step (Benchmark).
+ */
 function DownloadModelsStep({ onComplete }: { onComplete: () => void }) {
   const [downloads, setDownloads] = useState<Record<string, { progress: number; status: string }>>({});
   const [isRunning, setIsRunning] = useState(false);
@@ -387,41 +523,41 @@ function DownloadModelsStep({ onComplete }: { onComplete: () => void }) {
   const allComplete = Object.values(downloads).every((d) => d.status === "Complete");
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start gap-4">
+    <div className="space-y-[var(--space-4)]">
+      <div className="flex items-start gap-[var(--space-4)]">
         <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center flex-shrink-0">
           <HardDrive className="w-6 h-6 text-purple-400" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-white">Download Models</h3>
-          <p className="text-sm text-zinc-400 mt-1">
+          <h3 className="heading-secondary text-white">Download Models</h3>
+          <p className="body-default text-zinc-400 mt-1">
             Fetch LLM model weights from IPFS/HuggingFace and verify integrity via SHA256 hash.
           </p>
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-[var(--space-3)]">
         {SUPPORTED_MODELS.slice(0, 2).map((model) => {
           const download = downloads[model.id];
           return (
             <div
               key={model.id}
-              className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800"
+              className="p-[var(--space-4)] rounded-xl bg-zinc-900/50 border border-zinc-800"
             >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between mb-[var(--space-2)]">
+                <div className="flex items-center gap-[var(--space-2)]">
                   <Server className="w-4 h-4 text-zinc-500" />
-                  <span className="text-sm text-white">{model.displayName}</span>
+                  <span className="body-default text-white">{model.displayName}</span>
                 </div>
                 {download?.status === "Complete" ? (
-                  <span className="flex items-center gap-1 text-xs text-emerald-400">
+                  <span className="flex items-center gap-1 caption text-emerald-400">
                     <CheckCircle className="w-3.5 h-3.5" />
                     Verified
                   </span>
                 ) : download ? (
-                  <span className="text-xs text-zinc-400">{download.status}</span>
+                  <span className="caption text-zinc-400">{download.status}</span>
                 ) : (
-                  <span className="text-xs text-zinc-600">Pending</span>
+                  <span className="caption text-zinc-600">Pending</span>
                 )}
               </div>
               {download && (
@@ -454,7 +590,7 @@ function DownloadModelsStep({ onComplete }: { onComplete: () => void }) {
       {isRunning && (
         <div className="flex items-center justify-center gap-2 py-3 text-zinc-400">
           <Loader2 className="w-4 h-4 animate-spin" />
-          <span className="text-sm">Downloading models...</span>
+          <span className="body-default">Downloading models...</span>
         </div>
       )}
     </div>
@@ -465,6 +601,35 @@ function DownloadModelsStep({ onComplete }: { onComplete: () => void }) {
 // STEP 4: BENCHMARK
 // ============================================================================
 
+/**
+ * Step 4: Hardware Benchmark
+ *
+ * Runs a standardized inference test to verify hardware capabilities and
+ * establish a performance baseline for job pricing and scheduling.
+ *
+ * **Benchmark Metrics:**
+ * - Tokens/sec: Inference throughput (typically 94-114 for demo)
+ * - Latency: Time to first token (0.8-1.2 seconds)
+ * - VRAM Used: GPU memory consumption (19-21 GB)
+ * - Output Hash: Deterministic hash for reproducibility verification
+ *
+ * **Completion Criteria:**
+ * - Benchmark runs to completion without errors
+ * - Results object is populated with all metrics
+ * - "Benchmark Passed" indicator is displayed
+ *
+ * **Behavior:**
+ * 1. User clicks "Run Benchmark" button
+ * 2. Spinning animation displays during test (~1.2 seconds)
+ * 3. Results card appears with performance metrics
+ * 4. On success, `onComplete()` is called after 300ms delay
+ *
+ * **Note:** In this demo, results are simulated with slight randomization.
+ * Production would run actual GPT-OSS 20B inference tests.
+ *
+ * @param onComplete - Callback invoked when benchmark passes.
+ *   Triggers transition to the next step (Stake).
+ */
 function BenchmarkStep({ onComplete }: { onComplete: () => void }) {
   const [isRunning, setIsRunning] = useState(false);
   const [results, setResults] = useState<{
@@ -489,14 +654,14 @@ function BenchmarkStep({ onComplete }: { onComplete: () => void }) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start gap-4">
+    <div className="space-y-[var(--space-4)]">
+      <div className="flex items-start gap-[var(--space-4)]">
         <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
           <Gauge className="w-6 h-6 text-blue-400" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-white">Hardware Benchmark</h3>
-          <p className="text-sm text-zinc-400 mt-1">
+          <h3 className="heading-secondary text-white">Hardware Benchmark</h3>
+          <p className="body-default text-zinc-400 mt-1">
             Run standardized inference test to verify hardware capabilities and establish performance baseline.
           </p>
         </div>
@@ -510,34 +675,34 @@ function BenchmarkStep({ onComplete }: { onComplete: () => void }) {
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
             />
-            <p className="text-sm text-zinc-400 mt-4">Running benchmark test...</p>
-            <p className="text-xs text-zinc-500 mt-1">Testing: GPT-OSS 20B inference</p>
+            <p className="body-default text-zinc-400 mt-4">Running benchmark test...</p>
+            <p className="caption text-zinc-500 mt-1">Testing: GPT-OSS 20B inference</p>
           </div>
         </div>
       )}
 
       {results && (
-        <div className="p-4 rounded-xl bg-zinc-900/50 border border-emerald-500/30">
-          <div className="flex items-center gap-2 mb-4">
+        <div className="p-[var(--space-4)] rounded-xl bg-zinc-900/50 border border-emerald-500/30">
+          <div className="flex items-center gap-[var(--space-2)] mb-[var(--space-4)]">
             <CheckCircle className="w-5 h-5 text-emerald-400" />
-            <span className="text-sm font-medium text-emerald-400">Benchmark Passed</span>
+            <span className="body-medium text-emerald-400">Benchmark Passed</span>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-3 rounded-lg bg-zinc-800/50">
-              <p className="text-[10px] text-zinc-500 mb-1">Tokens/sec</p>
+          <div className="grid grid-cols-2 gap-[var(--space-4)]">
+            <div className="p-[var(--space-3)] rounded-lg bg-zinc-800/50">
+              <p className="micro text-zinc-500 mb-1">Tokens/sec</p>
               <p className="text-xl font-bold text-white">{results.tokensPerSec}</p>
             </div>
-            <div className="p-3 rounded-lg bg-zinc-800/50">
-              <p className="text-[10px] text-zinc-500 mb-1">Latency</p>
+            <div className="p-[var(--space-3)] rounded-lg bg-zinc-800/50">
+              <p className="micro text-zinc-500 mb-1">Latency</p>
               <p className="text-xl font-bold text-white">{results.latency.toFixed(2)}s</p>
             </div>
-            <div className="p-3 rounded-lg bg-zinc-800/50">
-              <p className="text-[10px] text-zinc-500 mb-1">VRAM Used</p>
+            <div className="p-[var(--space-3)] rounded-lg bg-zinc-800/50">
+              <p className="micro text-zinc-500 mb-1">VRAM Used</p>
               <p className="text-xl font-bold text-white">{results.memoryUsed.toFixed(1)} GB</p>
             </div>
-            <div className="p-3 rounded-lg bg-zinc-800/50">
-              <p className="text-[10px] text-zinc-500 mb-1">Output Hash</p>
-              <p className="text-sm font-mono text-white truncate">{results.hash}</p>
+            <div className="p-[var(--space-3)] rounded-lg bg-zinc-800/50">
+              <p className="micro text-zinc-500 mb-1">Output Hash</p>
+              <p className="type-mono text-white truncate">{results.hash}</p>
             </div>
           </div>
         </div>
@@ -562,6 +727,36 @@ function BenchmarkStep({ onComplete }: { onComplete: () => void }) {
 // STEP 5: STAKE
 // ============================================================================
 
+/**
+ * Step 5: Stake Collateral
+ *
+ * Locks QUBIC tokens on-chain as collateral to ensure good behavior.
+ * Higher stakes result in better job queue priority and reputation scores.
+ *
+ * **Staking Parameters:**
+ * - Minimum: 1M QUBIC
+ * - Maximum: 100M QUBIC
+ * - Step: 1M QUBIC increments
+ * - Default: 10M QUBIC
+ *
+ * **Completion Criteria:**
+ * - Stake transaction submitted and confirmed
+ * - Success message displayed with staked amount
+ * - `isStaked` state set to true
+ *
+ * **Behavior:**
+ * 1. User adjusts stake amount via slider (optional, default 10M)
+ * 2. User clicks "Stake X QUBIC" button
+ * 3. Loading state shows "Staking..." (~2 seconds)
+ * 4. Success confirmation displays staked amount
+ * 5. On success, `onComplete()` is called after 500ms delay
+ *
+ * **Important:** Once staked, the slider is disabled. Stake can be slashed
+ * for protocol violations (e.g., returning incorrect inference results).
+ *
+ * @param onComplete - Callback invoked when staking succeeds.
+ *   Triggers transition to the final step (Register).
+ */
 function StakeStep({ onComplete }: { onComplete: () => void }) {
   const [stakeAmount, setStakeAmount] = useState(10_000_000);
   const [isStaking, setIsStaking] = useState(false);
@@ -576,22 +771,22 @@ function StakeStep({ onComplete }: { onComplete: () => void }) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start gap-4">
+    <div className="space-y-[var(--space-4)]">
+      <div className="flex items-start gap-[var(--space-4)]">
         <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
           <Coins className="w-6 h-6 text-amber-400" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-white">Stake Collateral</h3>
-          <p className="text-sm text-zinc-400 mt-1">
+          <h3 className="heading-secondary text-white">Stake Collateral</h3>
+          <p className="body-default text-zinc-400 mt-1">
             Lock QUBIC on-chain as collateral. This ensures good behavior and can be slashed for violations.
           </p>
         </div>
       </div>
 
-      <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-4">
+      <div className="p-[var(--space-4)] rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-[var(--space-4)]">
         <div>
-          <label className="text-xs text-zinc-500 mb-2 block">Stake Amount</label>
+          <label className="caption text-zinc-500 mb-[var(--space-2)] block">Stake Amount</label>
           <div className="relative">
             <input
               type="range"
@@ -603,7 +798,7 @@ function StakeStep({ onComplete }: { onComplete: () => void }) {
               className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
               disabled={isStaked}
             />
-            <div className="flex justify-between text-xs text-zinc-500 mt-2">
+            <div className="flex justify-between caption text-zinc-500 mt-2">
               <span>1M QUBIC</span>
               <span className="text-amber-400 font-bold">
                 {(stakeAmount / 1_000_000).toFixed(0)}M QUBIC
@@ -613,10 +808,10 @@ function StakeStep({ onComplete }: { onComplete: () => void }) {
           </div>
         </div>
 
-        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-          <div className="flex items-start gap-2">
+        <div className="p-[var(--space-3)] rounded-lg bg-amber-500/10 border border-amber-500/20">
+          <div className="flex items-start gap-[var(--space-2)]">
             <Shield className="w-4 h-4 text-amber-400 mt-0.5" />
-            <div className="text-xs text-zinc-400">
+            <div className="caption text-zinc-400">
               <p className="text-amber-400 font-medium mb-1">Why stake?</p>
               <p>Higher stake = higher priority in job queue and better reputation score</p>
             </div>
@@ -625,10 +820,10 @@ function StakeStep({ onComplete }: { onComplete: () => void }) {
       </div>
 
       {isStaked ? (
-        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
-          <div className="flex items-center gap-2">
+        <div className="p-[var(--space-4)] rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+          <div className="flex items-center gap-[var(--space-2)]">
             <CheckCircle className="w-5 h-5 text-emerald-400" />
-            <span className="text-sm font-medium text-emerald-400">
+            <span className="body-medium text-emerald-400">
               {(stakeAmount / 1_000_000).toFixed(0)}M QUBIC staked successfully
             </span>
           </div>
@@ -662,6 +857,38 @@ function StakeStep({ onComplete }: { onComplete: () => void }) {
 // STEP 6: REGISTER
 // ============================================================================
 
+/**
+ * Step 6: Register On-Chain (Final Step)
+ *
+ * Submits worker capabilities to the WorkerRegistry smart contract,
+ * enabling the worker to start accepting inference jobs from the network.
+ *
+ * **Registration Data:**
+ * - Worker wallet address
+ * - Hardware attestation (GPU model, VRAM)
+ * - Supported models list
+ * - Pricing configuration
+ * - Coordinator endpoint URL
+ *
+ * **Completion Criteria:**
+ * - Registration transaction submitted to blockchain
+ * - Transaction hash received and displayed
+ * - `isRegistered` state set to true
+ *
+ * **Behavior:**
+ * 1. User reviews registration checklist
+ * 2. User clicks "Register Worker" button
+ * 3. Loading state shows "Submitting to blockchain..." (~2.5 seconds)
+ * 4. Success confirmation displays with transaction hash
+ * 5. On success, `onComplete()` is called after 500ms delay
+ *
+ * **Final Step:** When this step completes, the parent component sets
+ * `isComplete` to true, which renders the CompletionScreen instead of
+ * step content.
+ *
+ * @param onComplete - Callback invoked when registration succeeds.
+ *   This is the final step, so it triggers the completion screen.
+ */
 function RegisterStep({ onComplete }: { onComplete: () => void }) {
   const [isRegistering, setIsRegistering] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
@@ -677,22 +904,22 @@ function RegisterStep({ onComplete }: { onComplete: () => void }) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start gap-4">
+    <div className="space-y-[var(--space-4)]">
+      <div className="flex items-start gap-[var(--space-4)]">
         <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
           <FileCheck className="w-6 h-6 text-emerald-400" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-white">Register On-Chain</h3>
-          <p className="text-sm text-zinc-400 mt-1">
+          <h3 className="heading-secondary text-white">Register On-Chain</h3>
+          <p className="body-default text-zinc-400 mt-1">
             Submit your capabilities to the WorkerRegistry smart contract and start accepting jobs.
           </p>
         </div>
       </div>
 
-      <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-3">
-        <p className="text-xs text-zinc-500">Registration includes:</p>
-        <div className="space-y-2">
+      <div className="p-[var(--space-4)] rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-[var(--space-3)]">
+        <p className="caption text-zinc-500">Registration includes:</p>
+        <div className="space-y-[var(--space-2)]">
           {[
             "Worker wallet address",
             "Hardware attestation (GPU model, VRAM)",
@@ -700,21 +927,21 @@ function RegisterStep({ onComplete }: { onComplete: () => void }) {
             "Pricing configuration",
             "Coordinator endpoint",
           ].map((item, i) => (
-            <div key={i} className="flex items-center gap-2">
+            <div key={i} className="flex items-center gap-[var(--space-2)]">
               <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-sm text-zinc-300">{item}</span>
+              <span className="body-default text-zinc-300">{item}</span>
             </div>
           ))}
         </div>
       </div>
 
       {isRegistered ? (
-        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-3">
-          <div className="flex items-center gap-2">
+        <div className="p-[var(--space-4)] rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-[var(--space-3)]">
+          <div className="flex items-center gap-[var(--space-2)]">
             <CheckCircle className="w-5 h-5 text-emerald-400" />
-            <span className="text-sm font-medium text-emerald-400">Registration Complete!</span>
+            <span className="body-medium text-emerald-400">Registration Complete!</span>
           </div>
-          <div className="p-2 rounded-lg bg-zinc-900/50 font-mono text-xs text-zinc-400">
+          <div className="p-[var(--space-2)] rounded-lg bg-zinc-900/50 type-mono text-zinc-400">
             Tx: {txHash}
           </div>
         </div>
@@ -747,26 +974,38 @@ function RegisterStep({ onComplete }: { onComplete: () => void }) {
 // COMPLETION SCREEN
 // ============================================================================
 
+/**
+ * Final screen displayed when all onboarding steps are completed.
+ *
+ * Shows a success animation and confirmation that the worker node is
+ * ready to accept inference jobs from the network.
+ *
+ * **Actions Available:**
+ * - "Start Over": Resets the wizard to step 1 for reconfiguration
+ *
+ * @param onReset - Callback to restart the onboarding process.
+ *   Resets `currentStep` to 0 and all step statuses to initial state.
+ */
 function CompletionScreen({ onReset }: { onReset: () => void }) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="text-center py-8"
+      className="text-center py-[var(--space-8)]"
     >
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ delay: 0.2, type: "spring" }}
-        className="w-20 h-20 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-6"
+        className="w-20 h-20 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-[var(--space-6)]"
       >
         <CheckCircle className="w-10 h-10 text-emerald-400" />
       </motion.div>
-      <h2 className="text-2xl font-bold text-white mb-2">Worker Ready!</h2>
-      <p className="text-zinc-400 mb-6">
+      <h2 className="heading-primary text-white mb-[var(--space-2)]">Worker Ready!</h2>
+      <p className="body-default text-zinc-400 mb-[var(--space-6)]">
         Your node is now registered and ready to accept inference jobs.
       </p>
-      <div className="flex items-center justify-center gap-4">
+      <div className="flex items-center justify-center gap-[var(--space-4)]">
         <button
           onClick={onReset}
           className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-800 text-zinc-300 hover:text-white transition-colors"
@@ -783,6 +1022,47 @@ function CompletionScreen({ onReset }: { onReset: () => void }) {
 // MAIN ONBOARDING COMPONENT
 // ============================================================================
 
+/**
+ * Main worker onboarding wizard component.
+ *
+ * Orchestrates a 6-step setup flow for new compute node operators:
+ * 1. **Install** - Download worker software components
+ * 2. **Configure** - Set wallet address and model selection
+ * 3. **Download** - Fetch LLM model weights
+ * 4. **Benchmark** - Run hardware performance tests
+ * 5. **Stake** - Lock QUBIC collateral
+ * 6. **Register** - Submit to WorkerRegistry contract
+ *
+ * ## Step Lifecycle Pattern
+ *
+ * Each step component receives an `onComplete` callback that chains to
+ * the next step. The flow is:
+ *
+ * ```
+ * Step calls onComplete() → completeStep() updates states →
+ *   Current step: status → "complete"
+ *   Next step: status → "active"
+ *   currentStep index increments
+ * ```
+ *
+ * ## State Management
+ *
+ * - `currentStep`: Index of active step (0-5)
+ * - `steps`: Array of OnboardingStep with dynamic statuses
+ * - `isComplete`: True when all steps finished, shows CompletionScreen
+ *
+ * ## Key Functions
+ *
+ * - `completeStep()`: Called by child steps to advance the wizard
+ * - `resetOnboarding()`: Resets all state to initial values
+ * - `renderStepContent()`: Switch statement selecting active step component
+ *
+ * @example
+ * ```tsx
+ * // Usage in parent component
+ * <WorkerOnboarding />
+ * ```
+ */
 export function WorkerOnboarding() {
   const [currentStep, setCurrentStep] = useState(0);
   const [steps, setSteps] = useState<OnboardingStep[]>([
@@ -842,20 +1122,20 @@ export function WorkerOnboarding() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-[var(--space-6)]">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+          <h1 className="heading-primary text-white flex items-center gap-[var(--space-3)]">
             <Zap className="w-6 h-6 text-cyan-400" />
             Worker Setup
           </h1>
-          <p className="text-zinc-500 text-sm mt-1">
+          <p className="text-zinc-500 body-default mt-1">
             Complete the onboarding process to start earning QUBIC
           </p>
         </div>
         {!isComplete && (
-          <span className="text-xs text-zinc-500">
+          <span className="caption text-zinc-500">
             Step {currentStep + 1} of {steps.length}
           </span>
         )}

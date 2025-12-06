@@ -9,12 +9,28 @@ export interface WorkerHardware {
   ram: number; // in GB
 }
 
-// Worker statistics
+// Worker statistics (extended for reputation system)
 export interface WorkerStats {
   jobsCompleted: number;
   totalEarnings: number; // in QUBIC
   avgResponseTime: number; // in ms
-  reputation: number; // 0-100
+  reputation: number; // 0-100 (legacy score)
+
+  // Upwork-like metrics
+  avgRating: number; // 1-5 stars
+  totalReviews: number;
+  completionRate: number; // 0-100%
+  ratingDistribution: {
+    1: number;
+    2: number;
+    3: number;
+    4: number;
+    5: number;
+  };
+
+  // Trust indicators
+  repeatClients: number;
+  jobsLast30Days: number;
 }
 
 // Main worker interface

@@ -5,3 +5,9 @@ export { WorkerOnboarding } from "./WorkerOnboarding";
 export { JobDetail } from "./JobDetail";
 export { NetworkExplorer } from "./NetworkExplorer";
 export { FlowDiagram, RequesterFlowDiagram, WorkerFlowDiagram } from "./FlowDiagram";
+export { PoolMarketplace } from "./PoolMarketplace";
+
+// Reputation and Review System
+export { WorkerProfile, StarRating, ReputationBadge } from "./WorkerProfile";
+export { WriteReview } from "./WriteReview";
+export { WorkerListCard, WorkerList, FavoriteWorkers } from "./WorkerListCard";

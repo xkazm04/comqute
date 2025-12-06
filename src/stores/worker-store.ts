@@ -13,12 +13,22 @@ const DEFAULT_HARDWARE: WorkerHardware = {
   ram: 64,
 };
 
-// Initial stats
+// Initial stats with Upwork-like metrics
 const DEFAULT_STATS: WorkerStats = {
   jobsCompleted: 0,
   totalEarnings: 0,
   avgResponseTime: 0,
   reputation: 100,
+
+  // Upwork-like metrics
+  avgRating: 0,
+  totalReviews: 0,
+  completionRate: 100,
+  ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+
+  // Trust indicators
+  repeatClients: 0,
+  jobsLast30Days: 0,
 };
 
 interface WorkerState {

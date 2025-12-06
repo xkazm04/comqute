@@ -12,6 +12,17 @@
   --qubic-border: #2A3142;
   --qubic-text: #E5E7EB;
   --qubic-muted: #9CA3AF;
+
+  /* Spacing design tokens (4px base unit) */
+  --space-1: 4px;   /* 0.25rem - micro spacing */
+  --space-2: 8px;   /* 0.5rem  - inline gaps, tight spacing */
+  --space-3: 12px;  /* 0.75rem - small gaps */
+  --space-4: 16px;  /* 1rem    - card padding, standard gaps */
+  --space-5: 20px;  /* 1.25rem - medium gaps */
+  --space-6: 24px;  /* 1.5rem  - section gaps */
+  --space-8: 32px;  /* 2rem    - large section gaps */
+  --space-10: 40px; /* 2.5rem  - extra large gaps */
+  --space-12: 48px; /* 3rem    - page-level spacing */
 }
 
 @theme inline {
@@ -28,6 +39,17 @@
   --color-qubic-border: var(--qubic-border);
   --color-qubic-text: var(--qubic-text);
   --color-qubic-muted: var(--qubic-muted);
+
+  /* Spacing tokens for Tailwind utilities */
+  --spacing-1: var(--space-1);
+  --spacing-2: var(--space-2);
+  --spacing-3: var(--space-3);
+  --spacing-4: var(--space-4);
+  --spacing-5: var(--space-5);
+  --spacing-6: var(--space-6);
+  --spacing-8: var(--space-8);
+  --spacing-10: var(--space-10);
+  --spacing-12: var(--space-12);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -87,4 +109,123 @@ body {
 
 .animate-stream-cursor {
   animation: stream-cursor 1s ease-in-out infinite;
+}
+
+/* ============================================================================
+   TYPOGRAPHY SCALE
+   Consistent type hierarchy for the application
+   ============================================================================ */
+
+/* Display - Large titles, hero text (32px/2xl) */
+.type-display {
+  font-size: 1.5rem; /* 24px */
+  line-height: 2rem; /* 32px */
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+@media (min-width: 640px) {
+  .type-display {
+    font-size: 2rem; /* 32px */
+    line-height: 2.5rem; /* 40px */
+  }
+}
+
+/* Heading Primary - Page/section headings (24px/2xl) */
+.heading-primary {
+  font-size: 1.5rem; /* 24px */
+  line-height: 2rem; /* 32px */
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+/* Heading Secondary - Card headings, subsections (18px/lg) */
+.heading-secondary {
+  font-size: 1.125rem; /* 18px */
+  line-height: 1.75rem; /* 28px */
+  font-weight: 600;
+}
+
+/* Heading Tertiary - Small card titles, labels (14px/sm bold) */
+.heading-tertiary {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.25rem; /* 20px */
+  font-weight: 600;
+}
+
+/* Body Default - Main body text (14px/sm) */
+.body-default {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.5rem; /* 24px */
+  font-weight: 400;
+}
+
+/* Body Medium - Emphasized body text, labels (14px/sm medium) */
+.body-medium {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.5rem; /* 24px */
+  font-weight: 500;
+}
+
+/* Caption - Secondary text, metadata (12px/xs) */
+.caption {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1rem; /* 16px */
+  font-weight: 400;
+}
+
+/* Caption Medium - Emphasized captions, tags (12px/xs medium) */
+.caption-medium {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1rem; /* 16px */
+  font-weight: 500;
+}
+
+/* Micro - Tiny text, timestamps, badges (10px) */
+.micro {
+  font-size: 0.625rem; /* 10px */
+  line-height: 0.875rem; /* 14px */
+  font-weight: 400;
+}
+
+/* Micro Medium - Emphasized micro text (10px medium) */
+.micro-medium {
+  font-size: 0.625rem; /* 10px */
+  line-height: 0.875rem; /* 14px */
+  font-weight: 500;
+}
+
+/* Code/Mono - Monospace text for addresses, hashes, code */
+.type-mono {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.75rem; /* 12px */
+  line-height: 1.25rem; /* 20px */
+  font-weight: 400;
+}
+
+.type-mono-sm {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.625rem; /* 10px */
+  line-height: 1rem; /* 16px */
+  font-weight: 400;
+}
+
+/* ============================================================================
+   FONT WEIGHT UTILITIES (explicit naming)
+   ============================================================================ */
+
+.font-weight-normal {
+  font-weight: 400;
+}
+
+.font-weight-medium {
+  font-weight: 500;
+}
+
+.font-weight-semibold {
+  font-weight: 600;
+}
+
+.font-weight-bold {
+  font-weight: 700;
 }
