@@ -130,7 +130,7 @@ function WorkerStatusToggle({
       scale: [1, 1.05, 1],
       transition: {
         duration: 0.3,
-        ease: "easeOut",
+        ease: "easeOut" as const,
         times: [0, 0.5, 1],
       },
     },

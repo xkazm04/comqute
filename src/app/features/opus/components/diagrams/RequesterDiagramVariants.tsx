@@ -80,7 +80,7 @@ export function RequesterArchitecturalVariant() {
         {
             id: "app",
             label: "Application",
-            sublabel: "Next.js / React",
+            sublabel: "API/SDK",
             icon: <Code className="w-5 h-5" />,
             zone: "client",
             status: "active",

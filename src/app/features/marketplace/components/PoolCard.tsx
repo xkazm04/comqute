@@ -77,7 +77,7 @@ export function PoolCard({
       <div className="flex items-center justify-between pt-3 border-t border-zinc-800/50">
         <div className="flex items-center gap-2">
           <div className="flex -space-x-2">
-            {pool.members.slice(0, 3).map((member, i) => (
+            {pool.members.slice(0, 3).map((member) => (
               <div
                 key={member.workerId}
                 className={`w-6 h-6 rounded-full border-2 border-zinc-900 flex items-center justify-center text-[10px] font-medium ${

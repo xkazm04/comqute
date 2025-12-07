@@ -16,7 +16,7 @@ export function PoolDiscovery() {
   const { wallet } = useWalletStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTier, setFilterTier] = useState<PoolTier | "all">("all");
-  const [selectedPool, setSelectedPool] = useState<ComputePool | null>(null);
+  const [, setSelectedPool] = useState<ComputePool | null>(null);
 
   useEffect(() => {
     initializePools();

@@ -133,6 +133,7 @@ export const useWorkerStore = create<WorkerState>()(
             worker: {
               ...state.worker,
               stats: {
+                ...currentStats,
                 jobsCompleted: newJobsCompleted,
                 totalEarnings: currentStats.totalEarnings + earnings,
                 avgResponseTime: Math.round(newAvgResponseTime),

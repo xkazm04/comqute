@@ -1,8 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { BinaryWatermark, CircuitPattern, HexGrid, PulseWave } from "../../ui/Backgrounds";
-import { HudCorners, GlitchTitle, HeroCard, FeatureCards } from "./components";
+import { HudCorners, GlitchTitle, HeroCard, GlowingTagline, MatrixPhrases } from "./components";
 
 export default function Cipher() {
   return (
@@ -16,6 +15,9 @@ export default function Cipher() {
       {/* HUD elements */}
       <HudCorners />
 
+      {/* Matrix typewriter phrases scattered around the page */}
+      <MatrixPhrases />
+
       {/* Main content */}
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-20">
         {/* Glitch title */}
@@ -24,19 +26,9 @@ export default function Cipher() {
         {/* Holographic card with content */}
         <HeroCard />
 
-        {/* Bottom tagline */}
-        <motion.p
-          className="mt-12 text-zinc-600 font-mono text-xs tracking-[0.3em] uppercase"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 2 }}
-        >
-          &lt;/ Intelligence for Everyone /&gt;
-        </motion.p>
+        {/* Glowing bottom tagline */}
+        <GlowingTagline />
       </div>
-
-      {/* Feature Cards Section */}
-      <FeatureCards />
 
       {/* Vignette */}
       <div

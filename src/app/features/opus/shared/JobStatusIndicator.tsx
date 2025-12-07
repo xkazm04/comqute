@@ -102,7 +102,7 @@ const scaleBounceVariants = {
     scale: [1, 1.1, 1],
     transition: {
       duration: 0.3,
-      ease: "easeOut",
+      ease: "easeOut" as const,
       times: [0, 0.5, 1],
     },
   },
@@ -115,7 +115,7 @@ const dotBounceVariants = {
     scale: [1, 1.5, 1],
     transition: {
       duration: 0.3,
-      ease: "easeOut",
+      ease: "easeOut" as const,
       times: [0, 0.5, 1],
     },
   },
@@ -128,7 +128,7 @@ const shakeVariants = {
     x: [-2, 2, -2, 2, 0],
     transition: {
       duration: 0.4,
-      ease: "easeOut",
+      ease: "easeOut" as const,
     },
   },
 };
@@ -140,7 +140,7 @@ const dotShakeVariants = {
     x: [-1, 1, -1, 1, 0],
     transition: {
       duration: 0.4,
-      ease: "easeOut",
+      ease: "easeOut" as const,
     },
   },
 };

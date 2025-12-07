@@ -15,7 +15,7 @@ const breathingAnimation = {
   transition: {
     duration: 3,
     repeat: Infinity,
-    ease: "easeInOut",
+    ease: "easeInOut" as const,
   },
 };
 

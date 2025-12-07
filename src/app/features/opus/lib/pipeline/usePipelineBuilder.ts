@@ -193,7 +193,7 @@ export function usePipelineBuilder(userId: string) {
     (blockId: string, updates: Partial<PipelineBlock>) => {
       setState((prev) => {
         const newBlocks = prev.pipeline.blocks.map((b) =>
-          b.id === blockId ? { ...b, ...updates } : b
+          b.id === blockId ? ({ ...b, ...updates } as PipelineBlock) : b
         );
 
         const newPipeline = {

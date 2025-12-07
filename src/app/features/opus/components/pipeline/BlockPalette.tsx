@@ -84,14 +84,12 @@ function DraggableBlock({ model, onDragStart }: DraggableBlockProps) {
   };
 
   return (
-    <motion.div
+    <div
       draggable
       onDragStart={onDragStart}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
       className={`
         flex items-center gap-3 p-3 rounded-lg border cursor-grab
-        transition-all duration-200
+        transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]
         ${colorMap[model.color] || colorMap.cyan}
       `}
       data-testid={`palette-block-${model.modelId}`}
@@ -109,7 +107,7 @@ function DraggableBlock({ model, onDragStart }: DraggableBlockProps) {
         </p>
       </div>
       <Icon className={`w-4 h-4 ${iconColorMap[model.color] || "text-cyan-400"}`} />
-    </motion.div>
+    </div>
   );
 }
 
