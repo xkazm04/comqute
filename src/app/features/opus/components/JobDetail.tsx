@@ -167,7 +167,7 @@ export function JobDetail({ jobId }: { jobId: string }) {
         <h2 className="text-xl font-semibold mb-2">Job Not Found</h2>
         <p className="text-zinc-500 mb-6">The job you're looking for doesn't exist.</p>
         <Link
-          href="/opus"
+          href="/app"
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -191,7 +191,7 @@ export function JobDetail({ jobId }: { jobId: string }) {
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link
-          href="/opus"
+          href="/app"
           className="p-2 rounded-lg hover:bg-zinc-900 transition-colors"
         >
           <ArrowLeft className="w-5 h-5 text-zinc-400" />

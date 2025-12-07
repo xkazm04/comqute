@@ -41,7 +41,7 @@ export default function JobDetailPage() {
 
       {/* Header */}
       <header className="relative z-20 h-16 flex items-center px-6 border-b border-zinc-800/50 bg-zinc-950/50 backdrop-blur-sm">
-        <Link href="/opus" className="flex items-center gap-2">
+        <Link href="/app" className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
             <Zap className="w-5 h-5 text-white" />
           </div>

@@ -69,7 +69,7 @@ export function StatusIndicator({ online, label, "data-testid": testId }: Status
   return (
     <motion.div
       data-testid={testId}
-      className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900/50 border border-zinc-800"
+      className="flex items-center gap-2 px-6 py-1.5 rounded-full bg-zinc-900/50 border border-zinc-800"
       variants={{ ...bounceVariants, ...shakeVariants }}
       initial="initial"
       animate={controls}

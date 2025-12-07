@@ -5,9 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface GlitchTitleProps {
   text: string;
+  small?: boolean;
 }
 
-export function GlitchTitle({ text }: GlitchTitleProps) {
+export function GlitchTitle({ text, small }: GlitchTitleProps) {
   const [glitch, setGlitch] = useState(false);
 
   useEffect(() => {
@@ -26,7 +27,9 @@ export function GlitchTitle({ text }: GlitchTitleProps) {
         {glitch && (
           <>
             <motion.span
-              className="absolute inset-0 text-6xl md:text-9xl font-bold text-cyan-500"
+              className={`absolute inset-0 font-bold text-cyan-500 ${
+                small ? "text-md" : "text-6xl md:text-9xl"
+              }`}
               initial={{ x: 0, opacity: 0 }}
               animate={{
                 x: [-5, 5, -3, 3, 0],
@@ -39,7 +42,9 @@ export function GlitchTitle({ text }: GlitchTitleProps) {
               {text}
             </motion.span>
             <motion.span
-              className="absolute inset-0 text-6xl md:text-9xl font-bold text-rose-500"
+              className={`absolute inset-0 font-bold text-rose-500 ${
+                small ? "text-md" : "text-6xl md:text-9xl"
+              }`}
               initial={{ x: 0, opacity: 0 }}
               animate={{
                 x: [5, -5, 3, -3, 0],
@@ -57,7 +62,9 @@ export function GlitchTitle({ text }: GlitchTitleProps) {
 
       {/* Main text */}
       <motion.h1
-        className="text-6xl md:text-9xl font-bold tracking-tighter bg-gradient-to-b from-white to-zinc-400 bg-clip-text text-transparent"
+        className={`font-bold tracking-tighter bg-linear-to-b from-white to-zinc-400 bg-clip-text text-transparent ${
+          small ? "text-md" : "text-6xl md:text-9xl"
+        }`}
         animate={glitch ? {
           x: [0, -2, 2, -1, 1, 0],
           skewX: [0, -1, 1, 0],

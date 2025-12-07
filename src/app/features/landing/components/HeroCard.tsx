@@ -263,7 +263,7 @@ function ActionButtons() {
   return (
     <div className="grid grid-cols-2 gap-4 mt-8">
       <Link
-        href="/opus"
+        href="/app"
         className="group relative flex flex-col items-center justify-center p-5 rounded-xl border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/10 transition-all duration-300"
       >
         <DeveloperDecoration />
@@ -281,7 +281,7 @@ function ActionButtons() {
       </Link>
 
       <Link
-        href="/opus"
+        href="/app"
         className="group relative flex flex-col items-center justify-center p-5 rounded-xl border border-fuchsia-500/30 bg-fuchsia-500/5 hover:bg-fuchsia-500/10 transition-all duration-300"
       >
         <WorkerDecoration />

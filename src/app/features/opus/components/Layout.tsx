@@ -23,6 +23,7 @@ import { useWalletStore, useWorkerStore } from "@/stores";
 import { useHealth, useKeyboardShortcuts, type KeyboardShortcut } from "@/hooks";
 import { formatQubic } from "@/lib/mock-utils";
 import { GlassCard, ContentSkeleton, StatusIndicator, CommandPalette, ShortcutHint, type CommandItem } from "../shared";
+import { GlitchTitle } from "../../landing/components";
 
 // Re-export shared components for backward compatibility
 export { GlassCard, ContentSkeleton } from "../shared";
@@ -73,7 +74,7 @@ function WalletIndicator() {
         animate={{ opacity: 1 }}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/20 hover:border-cyan-500/40 transition-colors"
+        className="flex items-center gap-3 max-w-[200px] cursor-pointer px-4 py-3 rounded-lg bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/20 hover:border-cyan-500/40 transition-colors"
       >
         <Wallet className="w-5 h-5 text-cyan-400" />
         <span className="body-medium text-white">Connect Wallet</span>
@@ -109,45 +110,6 @@ function WalletIndicator() {
 }
 
 // ============================================================================
-// QUICK STATS
-// ============================================================================
-
-function QuickStats() {
-  const { isOllamaOnline } = useHealth();
-
-  return (
-    <div className="space-y-[var(--space-2)]">
-      <motion.div
-        initial={{ opacity: 0, x: -10 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.1 }}
-        className="flex items-center justify-between px-[var(--space-4)] py-[var(--space-2)] rounded-lg bg-zinc-900/30 border border-zinc-800/50"
-      >
-        <div className="flex items-center gap-[var(--space-2)]">
-          <Activity className="w-4 h-4 text-zinc-500" />
-          <span className="caption text-zinc-400">Ollama</span>
-        </div>
-        <span className={`caption-medium ${isOllamaOnline ? "text-emerald-400" : "text-red-400"}`}>
-          {isOllamaOnline ? "Online" : "Offline"}
-        </span>
-      </motion.div>
-      <motion.div
-        initial={{ opacity: 0, x: -10 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.15 }}
-        className="flex items-center justify-between px-[var(--space-4)] py-[var(--space-2)] rounded-lg bg-zinc-900/30 border border-zinc-800/50"
-      >
-        <div className="flex items-center gap-[var(--space-2)]">
-          <Zap className="w-4 h-4 text-zinc-500" />
-          <span className="caption text-zinc-400">Tick Rate</span>
-        </div>
-        <span className="caption-medium text-white">2s</span>
-      </motion.div>
-    </div>
-  );
-}
-
-// ============================================================================
 // SIDEBAR
 // ============================================================================
 
@@ -164,14 +126,9 @@ function Sidebar({
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-[var(--space-6)] border-b border-zinc-800/50"
+        className="p-[var(--space-5)] border-b border-zinc-800/50"
       >
-        <Link href="/opus" className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
-            <Zap className="w-5 h-5 text-white" />
-          </div>
-          <span className="font-bold tracking-wider text-zinc-100">COMQUTE</span>
-        </Link>
+         <GlitchTitle text="COMQUTE" small />
       </motion.div>
 
       {/* Navigation Tabs */}
@@ -210,12 +167,6 @@ function Sidebar({
           );
         })}
       </nav>
-
-      {/* Quick Stats */}
-      <div className="p-[var(--space-4)] border-t border-zinc-800/50 space-y-[var(--space-4)]">
-        <QuickStats />
-        <WalletIndicator />
-      </div>
     </aside>
   );
 }
@@ -277,21 +228,15 @@ function Header({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="flex items-center gap-[var(--space-4)]"
+        className="flex flex-row justify-center w-full gap-[var(--space-4)]"
       >
+         <WalletIndicator />
         <StatusIndicator online={isOllamaOnline} label={isOllamaOnline ? "Network Optimal" : "Offline"} />
-
-        {mounted && wallet.isConnected && (
-          <div className="hidden md:flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-1.5 rounded-full bg-zinc-900/50 border border-zinc-800">
-            <Wallet className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="caption-medium text-white">{formatQubic(wallet.balance)}</span>
-          </div>
-        )}
-
         <button className="p-2 text-zinc-400 hover:text-white transition-colors relative">
           <Bell className="w-5 h-5" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-cyan-500 border border-zinc-950" />
         </button>
+       
       </motion.div>
     </header>
   );
@@ -332,7 +277,7 @@ function MobileMenu({
             className="fixed inset-y-0 left-0 z-50 w-72 bg-zinc-950 border-r border-zinc-800 lg:hidden"
           >
             <div className="p-[var(--space-6)] border-b border-zinc-800/50">
-              <Link href="/opus" className="flex items-center gap-[var(--space-2)]" onClick={onClose}>
+              <Link href="/app" className="flex items-center gap-[var(--space-2)]" onClick={onClose}>
                 <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
                   <Zap className="w-5 h-5 text-white" />
                 </div>

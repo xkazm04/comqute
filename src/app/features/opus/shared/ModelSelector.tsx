@@ -25,7 +25,7 @@ const speedColors: Record<string, string> = {
 export function ModelSelector({ selectedModel, onSelect, variant = "cards" }: ModelSelectorProps) {
   if (variant === "pills") {
     return (
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 my-2">
         {SUPPORTED_MODELS.map((model) => {
           const isSelected = selectedModel === model.id;
           return (
@@ -37,7 +37,7 @@ export function ModelSelector({ selectedModel, onSelect, variant = "cards" }: Mo
               className={`
                 px-4 py-2 rounded-full text-sm font-medium transition-all
                 ${isSelected
-                  ? "bg-cyan-500 text-white"
+                  ? "border border-cyan-500 text-white"
                   : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white"
                 }
               `}
