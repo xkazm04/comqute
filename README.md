@@ -334,15 +334,3 @@ npm run lint      # Run ESLint
 ## License
 
 This project is licensed under the MIT License.
-
----
-
-## Acknowledgments
-
-- Built for the Qubic Hackathon
-- Powered by [Qubic](https://qubic.org) blockchain
-- LLM inference via [Ollama](https://ollama.ai)
-
----
-
-*Built with passion at Qubic Hackathon 2024*
