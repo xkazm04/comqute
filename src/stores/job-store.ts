@@ -14,6 +14,7 @@ interface JobState {
   jobs: Job[];
   activeJobId: string | null;
   createJob: (request: CreateJobRequest) => Job;
+  importJob: (job: Job) => void;
   updateJob: (id: string, updates: Partial<Job>) => void;
   getJob: (id: string) => Job | undefined;
   getJobsByStatus: (status: JobStatus | JobStatus[]) => Job[];
@@ -68,6 +69,18 @@ export const useJobStore = create<JobState>()(
         }));
 
         return job;
+      },
+
+      importJob: (job: Job) => {
+        set((state) => {
+          // Don't add if already exists
+          if (state.jobs.some((j) => j.id === job.id)) {
+            return state;
+          }
+          return {
+            jobs: [job, ...state.jobs],
+          };
+        });
       },
 
       updateJob: (id: string, updates: Partial<Job>) => {

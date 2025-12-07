@@ -18,7 +18,7 @@ interface LiveJobRowProps {
 
 export function LiveJobRow({ job }: LiveJobRowProps) {
   return (
-    <Link href={`/opus/job/${job.id}`} data-testid={`live-job-row-${job.id}`}>
+    <Link href={`/app/job/${job.id}`} data-testid={`live-job-row-${job.id}`}>
       <motion.div
         initial={{ opacity: 0, x: -10 }}
         animate={{ opacity: 1, x: 0 }}

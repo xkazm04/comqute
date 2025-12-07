@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { Job, JobStatus } from "@/types";
-
-// Import shared job store
-// Note: In a real app, this would be a database
-const jobStore = new Map<string, Job>();
+import type { JobStatus } from "@/types";
+import { jobStore } from "../route";
 
 // GET /api/jobs/:id - Get a single job
 export async function GET(

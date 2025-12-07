@@ -129,7 +129,7 @@ export function useWorker(): UseWorkerReturn {
     toggleAutoClaim,
   } = useWorkerStore();
 
-  const { getJob, updateJob } = useJobStore();
+  const { getJob, updateJob, importJob } = useJobStore();
   const { addBalance } = useWalletStore();
 
   const {
@@ -195,6 +195,19 @@ export function useWorker(): UseWorkerReturn {
       const startTime = Date.now();
 
       try {
+        // First, fetch the job from the server to get full details
+        const jobResponse = await fetch(`/api/jobs/${jobId}`);
+        if (!jobResponse.ok) {
+          throw new Error(`Failed to fetch job: ${jobResponse.statusText}`);
+        }
+        const { job: fetchedJob } = await jobResponse.json();
+        if (!fetchedJob) {
+          throw new Error("Job not found on server");
+        }
+
+        // Import the job into local store so we can track it
+        importJob(fetchedJob);
+
         // Update job status to assigned
         updateJob(jobId, {
           status: "assigned",
@@ -202,27 +215,35 @@ export function useWorker(): UseWorkerReturn {
         });
         setCurrentJob(jobId);
 
-        // Sync with server
-        await fetch(`/api/jobs/${jobId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            status: "assigned",
-            assignedWorker: worker.address,
-          }),
-        });
+        // Sync with server - don't fail if server is unavailable
+        try {
+          await fetch(`/api/jobs/${jobId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              status: "assigned",
+              assignedWorker: worker.address,
+            }),
+          });
+        } catch (syncError) {
+          console.warn("Failed to sync assigned status:", syncError);
+        }
 
         // Update to running
         updateJob(jobId, { status: "running" });
-        await fetch(`/api/jobs/${jobId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "running" }),
-        });
+        try {
+          await fetch(`/api/jobs/${jobId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "running" }),
+          });
+        } catch (syncError) {
+          console.warn("Failed to sync running status:", syncError);
+        }
 
-        // Get job details
+        // Get job details from local store (now available after import)
         const job = getJob(jobId);
-        if (!job) throw new Error("Job not found");
+        if (!job) throw new Error("Job not found in local store");
 
         // Start inference
         await startInference(jobId, {
@@ -253,10 +274,14 @@ export function useWorker(): UseWorkerReturn {
         }
       } catch (error) {
         console.error("Error claiming job:", error);
-        updateJob(jobId, {
-          status: "failed",
-          error: error instanceof Error ? error.message : "Unknown error",
-        });
+        // Only update job status if it was imported successfully
+        const existingJob = getJob(jobId);
+        if (existingJob) {
+          updateJob(jobId, {
+            status: "failed",
+            error: error instanceof Error ? error.message : "Unknown error",
+          });
+        }
       } finally {
         setCurrentJob(null);
         isProcessingRef.current = false;
@@ -265,6 +290,7 @@ export function useWorker(): UseWorkerReturn {
     [
       worker,
       updateJob,
+      importJob,
       setCurrentJob,
       getJob,
       startInference,

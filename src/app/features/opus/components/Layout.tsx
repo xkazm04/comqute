@@ -276,12 +276,9 @@ function MobileMenu({
             transition={{ type: "spring", damping: 25 }}
             className="fixed inset-y-0 left-0 z-50 w-72 bg-zinc-950 border-r border-zinc-800 lg:hidden"
           >
-            <div className="p-[var(--space-6)] border-b border-zinc-800/50">
+            <div className="p-[var(--space-5)] border-b border-zinc-800/50">
               <Link href="/app" className="flex items-center gap-[var(--space-2)]" onClick={onClose}>
-                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-white" />
-                </div>
-                <span className="font-bold tracking-wider text-zinc-100">COMQUTE</span>
+                 <GlitchTitle text="COMQUTE" small />
               </Link>
             </div>
 

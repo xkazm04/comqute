@@ -50,7 +50,7 @@ function JobRow({ job }: { job: RequesterJobView }) {
   const model = getModelById(job.modelId);
 
   return (
-    <Link href={`/opus/job/${job.id}`} data-testid={`job-row-${job.id}`}>
+    <Link href={`/app/job/${job.id}`} data-testid={`job-row-${job.id}`}>
       <motion.div
         whileHover={{ x: 2 }}
         className="flex items-center gap-4 py-3 px-4 rounded-lg hover:bg-zinc-900/50 border border-transparent hover:border-zinc-800 transition-all group cursor-pointer"
@@ -391,7 +391,7 @@ function JobSubmittedMessage({ job, onDismiss }: { job: Job; onDismiss: () => vo
         </p>
       </div>
       <Link
-        href={`/opus/job/${job.id}`}
+        href={`/app/job/${job.id}`}
         className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-zinc-800 text-xs text-zinc-300 hover:text-white transition-colors"
         data-testid="view-job-link"
       >
@@ -566,7 +566,7 @@ function CompletedJobRow({
         ) : null}
 
         <Link
-          href={`/opus/job/${jobView.id}`}
+          href={`/app/job/${jobView.id}`}
           className="p-2 rounded-lg bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
           data-testid="view-completed-job-btn"
         >
@@ -1044,7 +1044,7 @@ export function RequesterDashboard() {
                   )}
                 </h2>
                 {pipelineState && pipelineState.stats.totalJobs > 5 && (
-                  <Link href="/opus/history" className="caption text-cyan-400 hover:text-cyan-300" data-testid="view-all-jobs-link">
+                  <Link href="/app" className="caption text-cyan-400 hover:text-cyan-300" data-testid="view-all-jobs-link">
                     View all
                   </Link>
                 )}
